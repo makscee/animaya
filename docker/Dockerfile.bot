@@ -19,11 +19,12 @@ WORKDIR /app
 RUN pip install --no-cache-dir .
 
 # Block runtime pip install — bots must use bot.Dockerfile instead
-RUN echo '#!/bin/sh' > /usr/local/bin/pip && \
+RUN rm -f /usr/local/bin/pip /usr/local/bin/pip3 && \
+    echo '#!/bin/sh' > /usr/local/bin/pip && \
     echo 'echo "ERROR: pip blocked. Edit /data/bot.Dockerfile and request a rebuild."' >> /usr/local/bin/pip && \
     echo 'exit 1' >> /usr/local/bin/pip && \
     chmod +x /usr/local/bin/pip && \
-    cp /usr/local/bin/pip /usr/local/bin/pip3
+    ln -s /usr/local/bin/pip /usr/local/bin/pip3
 
 # Copy source
 COPY bot/ /app/bot/
