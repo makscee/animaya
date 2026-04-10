@@ -1,0 +1,47 @@
+FROM python:3.12-slim AS base
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 (needed for Claude Code CLI)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Block runtime pip install — bots must use bot.Dockerfile instead
+RUN mv /usr/local/bin/pip /usr/local/bin/_pip_blocked && \
+    mv /usr/local/bin/pip3 /usr/local/bin/_pip_blocked3 && \
+    printf '#!/bin/sh\necho "ERROR: pip install is blocked at runtime. Edit /data/bot.Dockerfile instead and request a rebuild."\nexit 1\n' > /usr/local/bin/pip && \
+    chmod +x /usr/local/bin/pip && \
+    cp /usr/local/bin/pip /usr/local/bin/pip3
+
+# Python deps (use _pip_blocked to install during build)
+COPY pyproject.toml /app/
+WORKDIR /app
+RUN _pip_blocked install --no-cache-dir .
+
+# Copy source
+COPY bot/ /app/bot/
+COPY shared/ /app/shared/
+
+# Apply per-bot customizations if bot.Dockerfile exists
+# (platform rebuilds with: docker build -f data/bot.Dockerfile ...)
+ONBUILD COPY bot.Dockerfile /tmp/bot.Dockerfile
+ONBUILD RUN if [ -f /tmp/bot.Dockerfile ]; then \
+    grep '^RUN ' /tmp/bot.Dockerfile | while read -r line; do \
+        cmd=$(echo "$line" | sed 's/^RUN //'); \
+        eval "$cmd"; \
+    done; fi
+
+# Data volume
+VOLUME /data
+ENV DATA_PATH=/data
+
+EXPOSE 8090
+
+CMD ["python", "-m", "bot"]
