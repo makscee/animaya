@@ -24,8 +24,8 @@ def main() -> None:
         logger.error("TELEGRAM_BOT_TOKEN not set")
         sys.exit(1)
 
-    if not (os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY")):
-        logger.error("Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set")
+    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        logger.error("CLAUDE_CODE_OAUTH_TOKEN not set")
         sys.exit(1)
 
     data_path = Path(os.environ.get("DATA_PATH", "/data"))

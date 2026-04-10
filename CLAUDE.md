@@ -65,7 +65,7 @@ python -m pytest tests/ -v
 
 Required:
 - `TELEGRAM_BOT_TOKEN` — Telegram bot token from @BotFather
-- `ANTHROPIC_API_KEY` — Anthropic API key for Claude
+- `CLAUDE_CODE_OAUTH_TOKEN` — Claude Code OAuth token (handles all Claude API auth)
 
 Optional:
 - `CLAUDE_MODEL` — Model override (default: claude-sonnet-4-6)
