@@ -8,10 +8,7 @@ services:
     env_file: ../.env
     volumes:
       - bot-data:/data
-    ports:
-      - "8090:8090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    network_mode: host
     # Resource limits (sandbox hardening deferred to Phase 3)
     mem_limit: 2g
     cpus: 1.0
