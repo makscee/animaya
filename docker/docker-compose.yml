@@ -10,6 +10,8 @@ services:
       - bot-data:/data
     ports:
       - "8090:8090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Resource limits (sandbox hardening deferred to Phase 3)
     mem_limit: 2g
     cpus: 1.0
