@@ -542,7 +542,12 @@ async def _error_handler(update, context):
 
 
 def build_app(token: str) -> Application:
-    app = Application.builder().token(token).build()
+    proxy_url = os.environ.get("TELEGRAM_PROXY")
+    builder = Application.builder().token(token)
+    if proxy_url:
+        builder = builder.proxy(proxy_url).get_updates_proxy(proxy_url)
+        logger.info("Using Telegram proxy: %s", proxy_url)
+    app = builder.build()
     app.add_handler(CommandHandler("start", _handle_start))
     app.add_handler(
         MessageHandler(
