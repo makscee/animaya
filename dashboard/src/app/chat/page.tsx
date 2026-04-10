@@ -1,11 +1,34 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   tools?: string[];
+  timestamp: string;
+}
+
+const STORAGE_KEY = "animaya-chat-messages";
+
+function loadMessages(): Message[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(messages: Message[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  } catch {
+    // storage full — trim old messages
+    const trimmed = messages.slice(-50);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+  }
 }
 
 export default function ChatPage() {
@@ -14,20 +37,43 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [activeTools, setActiveTools] = useState<string[]>([]);
+  const [showTools, setShowTools] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<string[]>([]);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    setMessages(loadMessages());
+  }, []);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    if (messages.length > 0) saveMessages(messages);
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamText]);
 
+  const addMessage = useCallback((msg: Message) => {
+    setMessages((prev) => [...prev, msg]);
+  }, []);
+
   async function handleSend() {
     const text = input.trim();
     if (!text || loading) return;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+
+    const userMsg: Message = {
+      role: "user",
+      content: text,
+      timestamp: new Date().toISOString(),
+    };
+    addMessage(userMsg);
     setLoading(true);
     setStreamText("");
     setActiveTools([]);
+    toolsRef.current = [];
 
     try {
       const res = await fetch("/api/chat", {
@@ -45,41 +91,71 @@ export default function ChatPage() {
       });
       es.addEventListener("tool", (e) => {
         const data = JSON.parse(e.data);
-        setActiveTools((prev) => [...prev, data.name]);
+        toolsRef.current = [...toolsRef.current, data.name];
+        setActiveTools([...toolsRef.current]);
       });
       es.addEventListener("done", (e) => {
         const data = JSON.parse(e.data);
         es.close();
         setStreamText("");
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.fullText, tools: activeTools },
-        ]);
+        const assistantMsg: Message = {
+          role: "assistant",
+          content: data.fullText,
+          tools: toolsRef.current,
+          timestamp: new Date().toISOString(),
+        };
+        addMessage(assistantMsg);
         setLoading(false);
         setActiveTools([]);
+        toolsRef.current = [];
       });
       es.addEventListener("error", () => {
         es.close();
         setStreamText("");
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Connection lost. Please try again." },
-        ]);
+        addMessage({
+          role: "assistant",
+          content: "Connection lost. Please try again.",
+          timestamp: new Date().toISOString(),
+        });
         setLoading(false);
       });
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Failed to send message. Is the bot running?" },
-      ]);
+      addMessage({
+        role: "assistant",
+        content: "Failed to send message. Is the bot running?",
+        timestamp: new Date().toISOString(),
+      });
       setLoading(false);
     }
   }
 
+  function clearHistory() {
+    setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <header className="p-4 border-b border-border">
+      <header className="p-4 border-b border-border flex items-center gap-3">
         <h2 className="text-lg font-semibold">Chat</h2>
+        <div className="flex-1" />
+        <label className="flex items-center gap-1.5 text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={showTools}
+            onChange={(e) => setShowTools(e.target.checked)}
+            className="rounded"
+          />
+          Show tools
+        </label>
+        {messages.length > 0 && (
+          <button
+            onClick={clearHistory}
+            className="text-xs text-muted hover:text-error"
+          >
+            Clear history
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -89,7 +165,10 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
             <div
               className={`max-w-[75%] rounded-xl px-4 py-2.5 text-sm ${
                 msg.role === "user"
@@ -98,10 +177,17 @@ export default function ChatPage() {
               }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
-              {msg.tools && msg.tools.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border text-xs text-muted">
-                  Tools: {msg.tools.join(", ")}
-                </div>
+              {showTools && msg.tools && msg.tools.length > 0 && (
+                <details className="mt-2 pt-2 border-t border-border">
+                  <summary className="text-xs text-muted cursor-pointer">
+                    {msg.tools.length} tool{msg.tools.length !== 1 ? "s" : ""} used
+                  </summary>
+                  <ul className="mt-1 text-xs text-muted space-y-0.5">
+                    {msg.tools.map((t, j) => (
+                      <li key={j}>• {t}</li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           </div>
@@ -111,14 +197,17 @@ export default function ChatPage() {
             <div className="max-w-[75%] rounded-xl px-4 py-2.5 text-sm bg-card border border-border">
               {streamText ? (
                 <div className="whitespace-pre-wrap">{streamText}</div>
-              ) : (
-                <div className="flex items-center gap-2 text-muted">
-                  {activeTools.length > 0 ? (
-                    <span>Using {activeTools[activeTools.length - 1]}...</span>
-                  ) : (
-                    <span>Thinking...</span>
-                  )}
+              ) : activeTools.length > 0 ? (
+                <div className="text-muted">
+                  <span>Using {activeTools[activeTools.length - 1]}...</span>
+                  <ul className="mt-1 text-xs space-y-0.5">
+                    {activeTools.map((t, j) => (
+                      <li key={j}>• {t}</li>
+                    ))}
+                  </ul>
                 </div>
+              ) : (
+                <span className="text-muted">Thinking...</span>
               )}
             </div>
           </div>

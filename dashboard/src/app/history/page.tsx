@@ -2,79 +2,92 @@
 
 import { useState, useEffect } from "react";
 
-interface Session {
-  id: string;
-  lastMessage: string;
+interface HistoryMessage {
+  role: string;
+  content: string;
+  tools: string[];
+  source: string;
   timestamp: string;
-  messageCount: number;
 }
 
 export default function HistoryPage() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [messages, setMessages] = useState<HistoryMessage[]>([]);
+  const [filter, setFilter] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/chat/history")
+    fetch("/api/chat/history?limit=200")
       .then((r) => r.json())
-      .then((data) => setSessions(data.sessions || []))
-      .catch(() => {});
+      .then((data) => setMessages(data.messages || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  async function loadSession(id: string) {
-    setSelected(id);
-    try {
-      const res = await fetch(`/api/chat/history?session=${id}`);
-      const data = await res.json();
-      setMessages(data.messages || []);
-    } catch {
-      setMessages([]);
-    }
-  }
+  const filtered =
+    filter === "all"
+      ? messages
+      : messages.filter((m) => m.source === filter);
+
+  const sources = [...new Set(messages.map((m) => m.source))];
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 border-r border-border overflow-y-auto">
-        <header className="p-4 border-b border-border">
-          <h2 className="text-lg font-semibold">History</h2>
-        </header>
-        {sessions.length === 0 ? (
-          <div className="p-4 text-sm text-muted">No conversations yet</div>
-        ) : (
-          sessions.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => loadSession(s.id)}
-              className={`w-full text-left p-3 border-b border-border text-sm hover:bg-card-hover ${
-                selected === s.id ? "bg-card" : ""
-              }`}
-            >
-              <div className="font-medium truncate">{s.lastMessage || "New conversation"}</div>
-              <div className="text-xs text-muted mt-0.5">
-                {s.timestamp} · {s.messageCount} messages
-              </div>
-            </button>
-          ))
-        )}
-      </div>
+    <div className="flex flex-col h-full">
+      <header className="p-4 border-b border-border flex items-center gap-3">
+        <h2 className="text-lg font-semibold">Conversation History</h2>
+        <span className="text-xs text-muted">{messages.length} messages</span>
+        <div className="flex-1" />
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="bg-card border border-border rounded px-2 py-1 text-sm"
+        >
+          <option value="all">All sources</option>
+          {sources.map((s) => (
+            <option key={s} value={s}>
+              {s === "telegram" ? "Telegram" : s === "web" ? "Web Chat" : s}
+            </option>
+          ))}
+        </select>
+      </header>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {!selected ? (
-          <div className="flex items-center justify-center h-full text-muted">
-            Select a conversation to view
+        {loading ? (
+          <div className="text-center text-muted py-8">Loading history...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center text-muted py-8">
+            No messages yet. Chat with your bot via Telegram or the Chat tab.
           </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center text-muted py-8">No messages in this session</div>
         ) : (
-          <div className="space-y-3 max-w-2xl">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div className="space-y-3 max-w-2xl mx-auto">
+            {filtered.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 <div
                   className={`max-w-[75%] rounded-xl px-4 py-2.5 text-sm ${
-                    msg.role === "user" ? "bg-accent text-white" : "bg-card border border-border"
+                    msg.role === "user"
+                      ? "bg-accent text-white"
+                      : "bg-card border border-border"
                   }`}
                 >
                   <div className="whitespace-pre-wrap">{msg.content}</div>
+                  <div className="flex items-center gap-2 mt-1.5 text-xs opacity-60">
+                    <span>{msg.source === "telegram" ? "📱" : "💻"}</span>
+                    <span>{new Date(msg.timestamp).toLocaleString()}</span>
+                  </div>
+                  {msg.tools && msg.tools.length > 0 && (
+                    <details className="mt-1.5 pt-1.5 border-t border-border/50">
+                      <summary className="text-xs text-muted cursor-pointer">
+                        {msg.tools.length} tool{msg.tools.length !== 1 ? "s" : ""} used
+                      </summary>
+                      <ul className="mt-1 text-xs text-muted space-y-0.5">
+                        {msg.tools.map((t, j) => (
+                          <li key={j}>• {t}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </div>
               </div>
             ))}

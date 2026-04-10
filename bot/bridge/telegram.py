@@ -506,6 +506,7 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 )
 
                 accumulated = ""
+                tools_used: list[str] = []
                 async for message in query(prompt=envelope, options=options):
                     if message is None:
                         continue
@@ -515,9 +516,15 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                                 accumulated += block.text
                                 await _stream_text(state, accumulated)
                             elif isinstance(block, ToolUseBlock):
+                                tools_used.append(block.name)
                                 await _on_tool_use(state, block.name, block.input)
 
+                # Save to persistent history
+                from bot.dashboard.app import _save_message
+                _save_message("user", text, source="telegram")
+
                 if accumulated.strip():
+                    _save_message("assistant", accumulated, tools=tools_used, source="telegram")
                     _stats["messages_sent"] += 1
                     await _finalize_stream(state, accumulated, update)
                     await _send_referenced_files(accumulated, update)

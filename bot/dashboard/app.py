@@ -163,6 +163,38 @@ async def uninstall_module(module_id: str):
     return {"ok": True}
 
 
+# ── Message persistence ──────────────────────────────────────────────
+
+
+def _messages_path() -> Path:
+    return _data_dir / "chat_history.json"
+
+
+def _load_messages() -> list[dict]:
+    p = _messages_path()
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+    return []
+
+
+def _save_message(role: str, content: str, tools: list[str] | None = None, source: str = "web"):
+    msgs = _load_messages()
+    msgs.append({
+        "role": role,
+        "content": content,
+        "tools": tools or [],
+        "source": source,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    })
+    # Keep last 500 messages
+    if len(msgs) > 500:
+        msgs = msgs[-500:]
+    _messages_path().write_text(json.dumps(msgs, ensure_ascii=False), encoding="utf-8")
+
+
 # ── Chat ────────────────────────────────────────────────────────────
 
 
@@ -172,11 +204,13 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat_send(req: ChatRequest):
+    _save_message("user", req.text, source="web")
     asyncio.get_event_loop().create_task(_process_chat(req.text))
     return {"messageId": f"msg-{int(time.time())}"}
 
 
 async def _process_chat(prompt: str):
+    tools_used: list[str] = []
     try:
         from claude_code_sdk import query
         from claude_code_sdk.types import AssistantMessage, TextBlock, ToolUseBlock
@@ -194,9 +228,11 @@ async def _process_chat(prompt: str):
                         accumulated += block.text
                         _publish_event("token", {"text": block.text})
                     elif isinstance(block, ToolUseBlock):
+                        tools_used.append(block.name)
                         _publish_event("tool", {"name": block.name})
 
-        _publish_event("done", {"fullText": accumulated})
+        _save_message("assistant", accumulated, tools=tools_used, source="web")
+        _publish_event("done", {"fullText": accumulated, "tools": tools_used})
 
     except Exception as e:
         logger.exception("Chat error")
@@ -229,25 +265,14 @@ async def chat_stream():
 
 
 @app.get("/api/chat/history")
-async def chat_history(session: str = ""):
-    sessions_dir = _data_dir / "sessions"
-    if not sessions_dir.exists():
-        return {"sessions": [], "messages": []}
+async def chat_history(session: str = "", limit: int = 100):
+    messages = _load_messages()
 
     if session:
-        # Return placeholder — conversation history is in Claude Code's internal state
-        return {"messages": []}
+        # Filter by source
+        messages = [m for m in messages if m.get("source") == session]
 
-    sessions = []
-    for d in sorted(sessions_dir.iterdir(), reverse=True):
-        if d.is_dir():
-            sessions.append({
-                "id": d.name,
-                "lastMessage": "",
-                "timestamp": time.strftime("%Y-%m-%d %H:%M", time.localtime(d.stat().st_mtime)),
-                "messageCount": 0,
-            })
-    return {"sessions": sessions}
+    return {"messages": messages[-limit:]}
 
 
 # ── Files ───────────────────────────────────────────────────────────
