@@ -340,6 +340,22 @@ async def _finalize_stream(state: dict, reply: str, update: Update) -> None:
                 await update.message.reply_text(chunk, do_quote=(i == 0))
 
 
+# ── Tool formatting ─────────────────────────────────────────────────
+
+
+def _format_tool(name: str, tool_input: dict | None) -> str:
+    """Format a tool use into a readable string like 'Read: /data/SOUL.md'."""
+    if not tool_input or not isinstance(tool_input, dict):
+        return name
+    for key in ("file_path", "command", "pattern", "query", "path", "url", "prompt"):
+        if key in tool_input:
+            val = str(tool_input[key])
+            if len(val) > 80:
+                val = val[:77] + "..."
+            return f"{name}: {val}"
+    return name
+
+
 # ── File sending ────────────────────────────────────────────────────
 
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
@@ -516,7 +532,7 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                                 accumulated += block.text
                                 await _stream_text(state, accumulated)
                             elif isinstance(block, ToolUseBlock):
-                                tools_used.append(block.name)
+                                tools_used.append(_format_tool(block.name, block.input))
                                 await _on_tool_use(state, block.name, block.input)
 
                 # Save to persistent history

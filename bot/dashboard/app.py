@@ -228,8 +228,10 @@ async def _process_chat(prompt: str):
                         accumulated += block.text
                         _publish_event("token", {"text": block.text})
                     elif isinstance(block, ToolUseBlock):
-                        tools_used.append(block.name)
-                        _publish_event("tool", {"name": block.name})
+                        from bot.bridge.telegram import _format_tool
+                        label = _format_tool(block.name, block.input)
+                        tools_used.append(label)
+                        _publish_event("tool", {"name": label})
 
         _save_message("assistant", accumulated, tools=tools_used, source="web")
         _publish_event("done", {"fullText": accumulated, "tools": tools_used})
