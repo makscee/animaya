@@ -13,17 +13,15 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
 
-# Block runtime pip install — bots must use bot.Dockerfile instead
-RUN mv /usr/local/bin/pip /usr/local/bin/_pip_blocked && \
-    mv /usr/local/bin/pip3 /usr/local/bin/_pip_blocked3 && \
-    printf '#!/bin/sh\necho "ERROR: pip install is blocked at runtime. Edit /data/bot.Dockerfile instead and request a rebuild."\nexit 1\n' > /usr/local/bin/pip && \
-    chmod +x /usr/local/bin/pip && \
-    cp /usr/local/bin/pip /usr/local/bin/pip3
-
-# Python deps (use _pip_blocked to install during build)
+# Python deps (install before blocking pip)
 COPY pyproject.toml /app/
 WORKDIR /app
-RUN _pip_blocked install --no-cache-dir .
+RUN pip install --no-cache-dir .
+
+# Block runtime pip install — bots must use bot.Dockerfile instead
+RUN printf '#!/bin/sh\necho "ERROR: pip install is blocked at runtime. Edit /data/bot.Dockerfile instead and request a rebuild."\nexit 1\n' > /usr/local/bin/pip && \
+    chmod +x /usr/local/bin/pip && \
+    cp /usr/local/bin/pip /usr/local/bin/pip3
 
 # Copy source
 COPY bot/ /app/bot/
