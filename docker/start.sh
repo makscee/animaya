@@ -3,7 +3,7 @@ set -e
 
 # Start Next.js dashboard in background
 cd /dashboard
-NODE_ENV=production npx next start -p 3000 &
+NODE_ENV=production npx next start -p 3090 &
 
 # Start Python bot (FastAPI on 8090 + Telegram bridge)
 cd /app
