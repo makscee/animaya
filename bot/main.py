@@ -32,6 +32,14 @@ def main() -> None:
     data_path.mkdir(parents=True, exist_ok=True)
     logger.info("Starting Animaya bot (data: %s)", data_path)
 
+    # Rebuild CLAUDE.md from base + installed modules on startup
+    try:
+        from bot.dashboard.app import _rebuild_claude_md
+        _rebuild_claude_md()
+        logger.info("CLAUDE.md rebuilt from modules")
+    except Exception:
+        logger.exception("Failed to rebuild CLAUDE.md")
+
     # Git auto-versioning
     from bot.features.git_versioning import commit_if_changed, start_auto_commit
 

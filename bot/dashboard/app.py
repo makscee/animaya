@@ -53,6 +53,38 @@ async def health():
 # ── Modules ─────────────────────────────────────────────────────────
 
 
+def _rebuild_claude_md():
+    """Assemble CLAUDE.md from base template + installed module sections."""
+    from pathlib import Path as P
+
+    base_path = P(__file__).parent.parent / "templates" / "CLAUDE.md"
+    modules_dir = P(__file__).parent.parent / "templates" / "modules"
+
+    parts = []
+    if base_path.exists():
+        parts.append(base_path.read_text(encoding="utf-8").strip())
+
+    config = _load_config()
+    installed = config.get("modules", {})
+
+    for mod_id in installed:
+        mod_template = modules_dir / f"{mod_id}.md"
+        if mod_template.exists():
+            parts.append(mod_template.read_text(encoding="utf-8").strip())
+
+    claude_md = "\n\n".join(parts) + "\n"
+    (_data_dir / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
+
+    # Also update symlinks in existing session dirs
+    for session_dir in (_data_dir / "sessions").glob("*"):
+        link = session_dir / "CLAUDE.md"
+        if link.is_symlink():
+            link.unlink()
+            link.symlink_to(_data_dir / "CLAUDE.md")
+
+    logger.info("Rebuilt CLAUDE.md with modules: %s", list(installed.keys()))
+
+
 def _load_config() -> dict:
     config_path = _data_dir / "config.json"
     if config_path.exists():
@@ -117,6 +149,7 @@ async def install_module(module_id: str, request: Request):
             dockerfile.write_text("# Bot customizations\n# Add RUN lines to install packages\n", encoding="utf-8")
 
     _save_config(config)
+    _rebuild_claude_md()
     return {"ok": True}
 
 
@@ -126,6 +159,7 @@ async def uninstall_module(module_id: str):
     modules = config.get("modules", {})
     modules.pop(module_id, None)
     _save_config(config)
+    _rebuild_claude_md()
     return {"ok": True}
 
 
