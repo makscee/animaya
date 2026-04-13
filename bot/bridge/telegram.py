@@ -123,8 +123,13 @@ async def _send_status(update: Update, text: str = "\u2026") -> object:
 
 
 async def _update_status(msg, text: str, parse_mode=None) -> None:
-    with suppress(Exception):
+    try:
         await msg.edit_text(text, parse_mode=parse_mode)
+    except Exception:
+        if parse_mode:
+            with suppress(Exception):
+                await msg.edit_text(text, parse_mode=None)
+        # If both fail, silently ignore (streaming update, not critical)
 
 
 async def _delete_status(msg) -> None:
@@ -327,7 +332,10 @@ async def _finalize_stream(state: dict, reply: str, update: Update) -> None:
             await status_msg.edit_text(formatted, parse_mode=ParseMode.HTML)
         except Exception:
             await _delete_status(status_msg)
-            await update.message.reply_text(formatted, parse_mode=ParseMode.HTML, do_quote=True)
+            try:
+                await update.message.reply_text(formatted, parse_mode=ParseMode.HTML, do_quote=True)
+            except Exception:
+                await update.message.reply_text(reply, do_quote=True)
     else:
         await _delete_status(status_msg)
         for i in range(0, len(formatted), TG_MAX_LEN):
