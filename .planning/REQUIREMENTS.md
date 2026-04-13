@@ -102,13 +102,44 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| INST-01 | Phase 1 | Pending |
+| INST-02 | Phase 1 | Pending |
+| INST-03 | Phase 1 | Pending |
+| INST-04 | Phase 1 | Pending |
+| TELE-01 | Phase 2 | Pending |
+| TELE-02 | Phase 2 | Pending |
+| TELE-03 | Phase 2 | Pending |
+| TELE-04 | Phase 2 | Pending |
+| TELE-05 | Phase 2 | Pending |
+| MODS-01 | Phase 3 | Pending |
+| MODS-02 | Phase 3 | Pending |
+| MODS-03 | Phase 3 | Pending |
+| MODS-04 | Phase 3 | Pending |
+| MODS-05 | Phase 3 | Pending |
+| MODS-06 | Phase 3 | Pending |
+| IDEN-01 | Phase 4 | Pending |
+| IDEN-02 | Phase 4 | Pending |
+| IDEN-03 | Phase 4 | Pending |
+| IDEN-04 | Phase 4 | Pending |
+| MEMO-01 | Phase 4 | Pending |
+| MEMO-02 | Phase 4 | Pending |
+| MEMO-03 | Phase 4 | Pending |
+| MEMO-04 | Phase 4 | Pending |
+| GITV-01 | Phase 4 | Pending |
+| GITV-02 | Phase 4 | Pending |
+| GITV-03 | Phase 4 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
+| DASH-04 | Phase 5 | Pending |
+| DASH-05 | Phase 5 | Pending |
+| DASH-06 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 (pending roadmap)
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-13 after initial definition*
+*Last updated: 2026-04-13 after roadmap creation*
