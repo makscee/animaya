@@ -1,12 +1,10 @@
-"""Animaya bot — Phase 1 skeleton.
+"""Animaya bot — entry point.
 
-Validates environment, creates data directory, assembles stub CLAUDE.md,
-and blocks until shutdown. No network listeners, no user-facing behavior.
-Phase 2 will add the Telegram bridge.
+Validates environment, creates data directory, assembles CLAUDE.md,
+and starts Telegram polling via the bridge module.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import sys
@@ -23,7 +21,7 @@ DEFAULT_DATA_PATH = str(Path.home() / "hub" / "knowledge" / "animaya")
 
 
 async def main() -> None:
-    """Entry point: validate env, init data dir, assemble CLAUDE.md, block."""
+    """Entry point: validate env, init data dir, assemble CLAUDE.md, start Telegram polling."""
     # Validate required environment variables
     for var in REQUIRED_ENV_VARS:
         if not os.environ.get(var):
@@ -35,13 +33,18 @@ async def main() -> None:
     data_path.mkdir(parents=True, exist_ok=True)
     logger.info("Data path: %s", data_path)
 
-    # CLAUDE.md assembler stub — empty module list for Phase 1
+    # Assemble CLAUDE.md before starting the bridge
     assemble_claude_md(data_path)
 
-    logger.info("Animaya skeleton running — awaiting modules")
+    logger.info("Animaya starting Telegram bridge")
 
-    # Block until shutdown signal
-    await asyncio.Event().wait()
+    # Start Telegram polling — blocks until SIGINT/SIGTERM
+    from bot.bridge.telegram import build_app  # noqa: PLC0415
+
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    app = build_app(token)
+    logger.info("Telegram polling started")
+    await app.run_polling()
 
 
 def assemble_claude_md(data_path: Path) -> None:

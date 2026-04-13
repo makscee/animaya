@@ -1,10 +1,9 @@
-"""Tests for Phase 1 skeleton bot entry point."""
+"""Tests for bot entry point — Phase 2: Telegram bridge integration."""
 from __future__ import annotations
 
-import asyncio
 import os
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -43,9 +42,10 @@ class TestDataDirectory:
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(data_dir))
-        # main() blocks forever, so run with timeout
-        with pytest.raises(asyncio.TimeoutError):
-            await asyncio.wait_for(main(), timeout=0.5)
+        mock_app = MagicMock()
+        mock_app.run_polling = AsyncMock()
+        with patch("bot.bridge.telegram.build_app", return_value=mock_app):
+            await main()
         assert data_dir.exists()
 
     def test_default_data_path_value(self) -> None:
@@ -74,3 +74,62 @@ class TestClaudeMdAssembler:
         assemble_claude_md(tmp_path)
         content = (tmp_path / "CLAUDE.md").read_text()
         assert "No modules installed" in content
+
+
+class TestTelegramBridgeIntegration:
+    """Tests for Phase 2 Telegram bridge wiring in main()."""
+
+    async def test_main_calls_build_app_with_token(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """main() must call build_app with the TELEGRAM_BOT_TOKEN value."""
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "my-bot-token")
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
+        monkeypatch.setenv("DATA_PATH", str(tmp_path))
+        mock_app = MagicMock()
+        mock_app.run_polling = AsyncMock()
+        with patch("bot.bridge.telegram.build_app", return_value=mock_app) as mock_build:
+            await main()
+        mock_build.assert_called_once_with("my-bot-token")
+
+    async def test_main_awaits_run_polling(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """main() must await app.run_polling() (not asyncio.Event().wait())."""
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
+        monkeypatch.setenv("DATA_PATH", str(tmp_path))
+        mock_app = MagicMock()
+        mock_app.run_polling = AsyncMock()
+        with patch("bot.bridge.telegram.build_app", return_value=mock_app):
+            await main()
+        mock_app.run_polling.assert_awaited_once()
+
+    async def test_assemble_claude_md_before_build_app(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """assemble_claude_md must be called before build_app."""
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
+        monkeypatch.setenv("DATA_PATH", str(tmp_path))
+        call_order: list[str] = []
+        mock_app = MagicMock()
+        mock_app.run_polling = AsyncMock()
+
+        original_assemble = __import__("bot.main", fromlist=["assemble_claude_md"]).assemble_claude_md
+
+        def track_assemble(data_path: Path) -> None:
+            call_order.append("assemble_claude_md")
+            original_assemble(data_path)
+
+        def track_build_app(token: str) -> MagicMock:
+            call_order.append("build_app")
+            return mock_app
+
+        with (
+            patch("bot.main.assemble_claude_md", side_effect=track_assemble),
+            patch("bot.bridge.telegram.build_app", side_effect=track_build_app),
+        ):
+            await main()
+
+        assert call_order.index("assemble_claude_md") < call_order.index("build_app")
