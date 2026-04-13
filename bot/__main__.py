@@ -1,3 +1,8 @@
+"""Animaya bot entry point."""
+from __future__ import annotations
+
+import asyncio
+
 from bot.main import main
 
-main()
+asyncio.run(main())
