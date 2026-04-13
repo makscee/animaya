@@ -20,7 +20,7 @@ REQUIRED_ENV_VARS = ("TELEGRAM_BOT_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN")
 DEFAULT_DATA_PATH = str(Path.home() / "hub" / "knowledge" / "animaya")
 
 
-async def main() -> None:
+def main() -> None:
     """Entry point: validate env, init data dir, assemble CLAUDE.md, start Telegram polling."""
     # Validate required environment variables
     for var in REQUIRED_ENV_VARS:
@@ -39,12 +39,13 @@ async def main() -> None:
     logger.info("Animaya starting Telegram bridge")
 
     # Start Telegram polling — blocks until SIGINT/SIGTERM
+    # run_polling() is sync — it creates and manages its own event loop
     from bot.bridge.telegram import build_app  # noqa: PLC0415
 
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     app = build_app(token)
     logger.info("Telegram polling started")
-    await app.run_polling()
+    app.run_polling()
 
 
 def assemble_claude_md(data_path: Path) -> None:
