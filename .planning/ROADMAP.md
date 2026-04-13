@@ -44,7 +44,10 @@ Plans:
   3. Typing indicator appears while Claude is processing
   4. Responses longer than Telegram's limit arrive as multiple sequential messages
   5. Errors surface as a user-visible Telegram message rather than silent failure
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [ ] 02-02-PLAN.md — Wire bridge into main.py and verify end-to-end
 
 ### Phase 3: Module System
 **Goal**: Modules can be installed, configured, and uninstalled through a clean lifecycle contract with zero artifact leakage
@@ -56,7 +59,10 @@ Plans:
   3. Registry tracks installed modules; querying it returns current state
   4. CLAUDE.md assembler produces a merged prompt containing core + all installed module prompts
   5. Modules interact only through shared Hub files — no cross-module code imports exist
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
 
 ### Phase 4: First-Party Modules
 **Goal**: Identity, memory, and git versioning modules are installed and enrich every Claude interaction
@@ -67,7 +73,10 @@ Plans:
   2. Assistant writes a memory fact; that fact persists in Hub knowledge/memory/ and appears in the next session's context
   3. Memory and identity files are git-committed on the configured interval without conflicts
   4. User reconfigures identity from the dashboard without reinstalling the module; new identity is reflected immediately
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
 **UI hint**: yes
 
 ### Phase 5: Web Dashboard
@@ -80,7 +89,10 @@ Plans:
   3. User installs a module from the UI; it appears as installed and its system prompt is active
   4. User uninstalls a module from the UI; it disappears from installed list and leaves no artifacts
   5. Module with a config_schema renders a form; user submits changes and they take effect
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
 **UI hint**: yes
 
 ## Progress
@@ -91,7 +103,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Install & Foundation | 2/2 | Complete    | 2026-04-13 |
-| 2. Telegram Bridge | 0/TBD | Not started | - |
+| 2. Telegram Bridge | 0/2 | Planned | - |
 | 3. Module System | 0/TBD | Not started | - |
 | 4. First-Party Modules | 0/TBD | Not started | - |
 | 5. Web Dashboard | 0/TBD | Not started | - |
