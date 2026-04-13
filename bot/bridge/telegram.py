@@ -416,10 +416,9 @@ async def _handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "Hey! I'm your personal AI assistant powered by Claude.\n\n"
         "Just send me a message and I'll help you out. I can:\n"
         "- Answer questions and have conversations\n"
-        "- Remember things about you\n"
-        "- Organize knowledge in spaces\n"
-        "- Process voice messages and photos\n"
-        "- Generate images\n\n"
+        "- Read and write files\n"
+        "- Run commands and search the web\n"
+        "- Help with coding and analysis\n\n"
         "Send me a message to get started!",
     )
 
@@ -440,15 +439,10 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         msg = update.message
         text = msg.text or msg.caption or ""
 
-        # Voice → transcribe
+        # Voice → stub (Phase 4 adds real transcription)
         voice = msg.voice or msg.audio
         if voice:
-            from bot.features.audio import transcribe
-
-            tg_file = await voice.get_file()
-            raw = await tg_file.download_as_bytearray()
-            transcribed = await transcribe(bytes(raw))
-            text = f"[voice message] {transcribed}" if transcribed else "[voice message — transcription unavailable]"
+            text = "[Voice messages not yet supported]"
 
         # Photo → save and reference
         data_dir = Path(os.environ.get("DATA_PATH", "/data"))
@@ -535,12 +529,7 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                                 tools_used.append(_format_tool(block.name, block.input))
                                 await _on_tool_use(state, block.name, block.input)
 
-                # Save to persistent history
-                from bot.dashboard.app import _save_message
-                _save_message("user", text, source="telegram")
-
                 if accumulated.strip():
-                    _save_message("assistant", accumulated, tools=tools_used, source="telegram")
                     _stats["messages_sent"] += 1
                     await _finalize_stream(state, accumulated, update)
                     await _send_referenced_files(accumulated, update)

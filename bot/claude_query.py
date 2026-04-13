@@ -29,7 +29,6 @@ def build_options(
         ClaudeCodeOptions ready for query().
     """
     from claude_code_sdk import ClaudeCodeOptions
-    from bot.memory.core import build_core_context
 
     d = data_dir or Path(os.environ.get("DATA_PATH", "/data"))
     work_dir = str(cwd) if cwd else str(d)
@@ -38,9 +37,7 @@ def build_options(
     if system_prompt_extra:
         parts.append(system_prompt_extra)
 
-    core = build_core_context(d)
-    if core:
-        parts.append(core)
+    # Phase 4 adds memory context here
 
     system_prompt = "\n\n".join(parts) if parts else ""
 
