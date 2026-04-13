@@ -16,11 +16,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Telegram Bridge
 
-- [ ] **TELE-01**: User can send a message via Telegram and receive a streamed Claude response
-- [ ] **TELE-02**: Bridge uses asyncio.create_task() for non-blocking response handling
-- [ ] **TELE-03**: Bridge shows typing indicator while Claude is processing
-- [ ] **TELE-04**: Long responses are chunked and sent as multiple Telegram messages
-- [ ] **TELE-05**: Bridge handles errors gracefully and notifies user of failures
+- [x] **TELE-01**: User can send a message via Telegram and receive a streamed Claude response
+- [x] **TELE-02**: Bridge uses asyncio.create_task() for non-blocking response handling
+- [x] **TELE-03**: Bridge shows typing indicator while Claude is processing
+- [x] **TELE-04**: Long responses are chunked and sent as multiple Telegram messages
+- [x] **TELE-05**: Bridge handles errors gracefully and notifies user of failures
 
 ### Web Dashboard
 
@@ -106,11 +106,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INST-02 | Phase 1 | Pending |
 | INST-03 | Phase 1 | Pending |
 | INST-04 | Phase 1 | Pending |
-| TELE-01 | Phase 2 | Pending |
-| TELE-02 | Phase 2 | Pending |
-| TELE-03 | Phase 2 | Pending |
-| TELE-04 | Phase 2 | Pending |
-| TELE-05 | Phase 2 | Pending |
+| TELE-01 | Phase 2 | Complete |
+| TELE-02 | Phase 2 | Complete |
+| TELE-03 | Phase 2 | Complete |
+| TELE-04 | Phase 2 | Complete |
+| TELE-05 | Phase 2 | Complete |
 | MODS-01 | Phase 3 | Pending |
 | MODS-02 | Phase 3 | Pending |
 | MODS-03 | Phase 3 | Pending |

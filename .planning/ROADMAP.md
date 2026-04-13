@@ -44,9 +44,9 @@ Plans:
   3. Typing indicator appears while Claude is processing
   4. Responses longer than Telegram's limit arrive as multiple sequential messages
   5. Errors surface as a user-visible Telegram message rather than silent failure
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 02-01-PLAN.md — Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [x] 02-01-PLAN.md — Port v1 bridge modules (formatting, telegram, claude_query) with tests
 - [ ] 02-02-PLAN.md — Wire bridge into main.py and verify end-to-end
 
 ### Phase 3: Module System
@@ -103,7 +103,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Install & Foundation | 2/2 | Complete    | 2026-04-13 |
-| 2. Telegram Bridge | 0/2 | Planned | - |
+| 2. Telegram Bridge | 1/2 | In Progress|  |
 | 3. Module System | 0/TBD | Not started | - |
 | 4. First-Party Modules | 0/TBD | Not started | - |
 | 5. Web Dashboard | 0/TBD | Not started | - |
