@@ -29,7 +29,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Animaya restarts automatically after a crash or reboot
   3. Logs are accessible via `journalctl` without custom tooling
   4. Claude SDK subprocess does not inherit CLAUDECODE=1 and hangs are absent
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — Install scripts (setup.sh, run.sh, systemd service unit, tests)
+- [ ] 01-02-PLAN.md — Skeleton bot entry point (async main, CLAUDE.md assembler stub, tests)
 
 ### Phase 2: Telegram Bridge
 **Goal**: Users can send messages via Telegram and receive streamed Claude Code responses reliably
@@ -87,7 +90,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Install & Foundation | 0/TBD | Not started | - |
+| 1. Install & Foundation | 0/2 | Planning complete | - |
 | 2. Telegram Bridge | 0/TBD | Not started | - |
 | 3. Module System | 0/TBD | Not started | - |
 | 4. First-Party Modules | 0/TBD | Not started | - |
