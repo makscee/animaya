@@ -67,8 +67,9 @@ echo "$CURRENT_VERSION" > "$VERSION_FILE"
 
 # ── Systemd service ────────────────────────────────────────────────────────────
 echo "--> Installing systemd user service..."
+chmod +x "$INSTALL_DIR/run.sh"
 mkdir -p "$SERVICE_DIR"
-cp "$INSTALL_DIR/systemd/animaya.service" "$SERVICE_FILE"
+sed "s|%h/animaya|$INSTALL_DIR|g" "$INSTALL_DIR/systemd/animaya.service" > "$SERVICE_FILE"
 
 if ! systemctl --user status &>/dev/null 2>&1; then
     echo "WARNING: systemd user mode not available. You may need to install the service as a system service."
