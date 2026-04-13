@@ -1,0 +1,16 @@
+[Unit]
+Description=Animaya AI Assistant
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/animaya
+ExecStart=%h/animaya/run.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=animaya
+
+[Install]
+WantedBy=default.target
