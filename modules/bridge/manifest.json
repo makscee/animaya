@@ -1,0 +1,13 @@
+{
+  "manifest_version": 1,
+  "name": "bridge",
+  "version": "1.0.0",
+  "system_prompt_path": "prompt.md",
+  "owned_paths": [],
+  "scripts": {
+    "install": "install.sh",
+    "uninstall": "uninstall.sh"
+  },
+  "depends": [],
+  "config_schema": null
+}
