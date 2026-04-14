@@ -1,0 +1,8 @@
+{
+  "manifest_version": 1,
+  "name": "bad",
+  "version": "1.0.0",
+  "system_prompt_path": "prompt.md",
+  "owned_paths": [],
+  "unexpected_field": "should cause ValidationError"
+}
