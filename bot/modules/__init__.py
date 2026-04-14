@@ -5,10 +5,11 @@ Public API (added incrementally across plans):
   - Plan 02 (MODS-03): read_registry, write_registry, list_installed, get_entry,
                        add_entry, remove_entry
   - Plan 03 (MODS-02): install, uninstall
-  - Plan 04 (MODS-04): assemble_claude_md (pending)
+  - Plan 04 (MODS-04): assemble_claude_md
 """
 from __future__ import annotations
 
+from bot.modules.assembler import assemble_claude_md
 from bot.modules.lifecycle import install, uninstall
 from bot.modules.manifest import ModuleManifest, ModuleScripts, validate_manifest
 from bot.modules.registry import (
@@ -32,4 +33,5 @@ __all__ = [
     "remove_entry",
     "install",
     "uninstall",
+    "assemble_claude_md",
 ]
