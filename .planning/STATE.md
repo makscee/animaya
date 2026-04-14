@@ -76,6 +76,10 @@ None yet.
 - Phase 1: Verify Claude Code CLI path on LXC during install (research flagged as gap)
 - Phase 5: Module config_schema form renderer has no reference implementation yet
 
+### Roadmap Evolution
+
+- Phase 6 added: Telethon test harness at hub level for end-to-end Telegram bot testing from Claude Code
+
 ## Session Continuity
 
 Last session: 2026-04-13T20:21:54.051Z

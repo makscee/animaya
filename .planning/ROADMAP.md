@@ -13,7 +13,7 @@ Animaya v2 is a fresh rewrite of a Docker-based personal AI assistant into an LX
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Install & Foundation** - Working install script + systemd service on a Claude Box (completed 2026-04-13)
-- [ ] **Phase 2: Telegram Bridge** - Streaming Claude responses over Telegram with async safety
+- [x] **Phase 2: Telegram Bridge** - Streaming Claude responses over Telegram with async safety (completed 2026-04-13)
 - [ ] **Phase 3: Module System** - Manifest-driven module lifecycle with registry and CLAUDE.md assembler
 - [ ] **Phase 4: First-Party Modules** - Identity, memory, and git-versioning modules fully operational
 - [ ] **Phase 5: Web Dashboard** - FastAPI + HTMX dashboard for bot management and module configuration
@@ -44,10 +44,10 @@ Plans:
   3. Typing indicator appears while Claude is processing
   4. Responses longer than Telegram's limit arrive as multiple sequential messages
   5. Errors surface as a user-visible Telegram message rather than silent failure
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 02-01-PLAN.md — Port v1 bridge modules (formatting, telegram, claude_query) with tests
-- [ ] 02-02-PLAN.md — Wire bridge into main.py and verify end-to-end
+- [x] 02-02-PLAN.md — Wire bridge into main.py and verify end-to-end
 
 ### Phase 3: Module System
 **Goal**: Modules can be installed, configured, and uninstalled through a clean lifecycle contract with zero artifact leakage
@@ -61,7 +61,7 @@ Plans:
   5. Modules interact only through shared Hub files — no cross-module code imports exist
 **Plans**: 2 plans
 Plans:
-- [ ] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [x] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
 - [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
 
 ### Phase 4: First-Party Modules
@@ -75,7 +75,7 @@ Plans:
   4. User reconfigures identity from the dashboard without reinstalling the module; new identity is reflected immediately
 **Plans**: 2 plans
 Plans:
-- [ ] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
+- [x] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
 - [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
 **UI hint**: yes
 
@@ -103,7 +103,23 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Install & Foundation | 2/2 | Complete    | 2026-04-13 |
-| 2. Telegram Bridge | 1/2 | In Progress|  |
+| 2. Telegram Bridge | 2/2 | Complete   | 2026-04-13 |
 | 3. Module System | 0/TBD | Not started | - |
 | 4. First-Party Modules | 0/TBD | Not started | - |
 | 5. Web Dashboard | 0/TBD | Not started | - |
+
+### Phase 6: Telethon test harness at hub level for end-to-end Telegram bot testing from Claude Code
+
+**Goal:** Claude Code (running at ~/hub) can drive real Telegram conversations against the deployed Animaya bot programmatically — send a message, receive the streamed reply, assert on its content — so bot behavior can be tested end-to-end without manual Telegram interaction.
+**Depends on:** Phase 2
+**Requirements**: TEST-01 (Telethon auth + session persistence), TEST-02 (async test driver API), TEST-03 (smoke-test text round-trip)
+**Success Criteria** (what must be TRUE):
+  1. Telethon client authenticates as a user account using credentials from env and persists its session file at hub level
+  2. A helper API exposes `send_to_bot(text)` and `wait_for_reply(timeout)` so tests read like conversation scripts
+  3. A smoke-test script sends a text message to the deployed bot and asserts it receives a non-empty streamed reply within a timeout
+  4. Harness lives under ~/hub (not inside animaya repo) and points at the bot via configurable username
+  5. Running the smoke test from Claude Code prints PASS/FAIL with the bot's actual response text captured
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 6 to break down)
