@@ -17,6 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Module System** - Manifest-driven module lifecycle with registry and CLAUDE.md assembler
 - [ ] **Phase 4: First-Party Modules** - Identity, memory, and git-versioning modules fully operational
 - [ ] **Phase 5: Web Dashboard** - FastAPI + HTMX dashboard for bot management and module configuration
+- [x] **Phase 6: Telethon Test Harness** - Claude Code can drive end-to-end Telegram conversations against the deployed bot (completed 2026-04-14)
 
 ## Phase Details
 
@@ -119,7 +120,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
   3. A smoke-test script sends a text message to the deployed bot and asserts it receives a non-empty streamed reply within a timeout
   4. Harness lives under ~/hub (not inside animaya repo) and points at the bot via configurable username
   5. Running the smoke test from Claude Code prints PASS/FAIL with the bot's actual response text captured
-**Plans:** 0/1 plans
-
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 06-01-PLAN.md — Telethon harness at ~/hub/telethon/ (client, driver, smoke test, README)
+- [x] 06-01-PLAN.md — Telethon harness at ~/hub/telethon/ (client, driver, smoke test, README) — completed 2026-04-14, smoke test PASSES against @mks_test_assistant_bot
