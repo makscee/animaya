@@ -14,6 +14,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from bot.modules.assembler import assemble_claude_md
 from bot.modules.manifest import ModuleManifest, validate_manifest
 from bot.modules.registry import (
     add_entry,
@@ -186,9 +187,20 @@ def install(
         "installed_at": datetime.now(timezone.utc).isoformat(),
         "config": config,
         "depends": list(manifest.depends),
+        # Record module dir so the assembler can locate prompt.md for modules
+        # installed outside DEFAULT_MODULES_ROOT (e.g., during tests).
+        "module_dir": str(module_dir),
     }
     add_entry(hub_dir, entry)
     logger.info("Installed module %s@%s", manifest.name, manifest.version)
+
+    # D-18: rebuild CLAUDE.md at end of install. Failure here must not
+    # undo the install; log and continue.
+    try:
+        assemble_claude_md(hub_dir)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("CLAUDE.md reassembly after install failed: %s", exc)
+
     return entry
 
 
@@ -271,6 +283,14 @@ def uninstall(
 
     # Registry cleanup first (if leakage check fails we still want registry truth)
     remove_entry(hub_dir, name)
+
+    # D-18: rebuild CLAUDE.md after registry change, BEFORE the leakage
+    # check (so a leaking uninstall still produces a CLAUDE.md reflecting
+    # registry truth). Failure here is logged, not raised.
+    try:
+        assemble_claude_md(hub_dir)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("CLAUDE.md reassembly after uninstall failed: %s", exc)
 
     # MODS-05 leakage check — authoritative (raises on leak)
     if manifest is not None:

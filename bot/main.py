@@ -10,6 +10,8 @@ import os
 import sys
 from pathlib import Path
 
+from bot.modules.assembler import assemble_claude_md
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
@@ -48,25 +50,7 @@ def main() -> None:
     app.run_polling()
 
 
-def assemble_claude_md(data_path: Path) -> None:
-    """Write base CLAUDE.md with empty module list.
-
-    Phase 3 module system will extend this to merge installed module prompts.
-
-    Args:
-        data_path: Directory where CLAUDE.md will be written.
-
-    Returns:
-        None
-    """
-    claude_md = data_path / "CLAUDE.md"
-    claude_md.write_text(
-        "# Animaya\n"
-        "\n"
-        "You are Animaya, a personal AI assistant.\n"
-        "\n"
-        "<!-- module-prompts-start -->\n"
-        "<!-- No modules installed -->\n"
-        "<!-- module-prompts-end -->\n"
-    )
-    logger.info("CLAUDE.md assembled at %s (0 modules)", claude_md)
+# ``assemble_claude_md`` is imported from ``bot.modules.assembler`` above.
+# It is re-exported here so ``from bot.main import assemble_claude_md`` keeps
+# working (regression tests in tests/test_skeleton.py rely on this).
+__all__ = ["DEFAULT_DATA_PATH", "REQUIRED_ENV_VARS", "assemble_claude_md", "main"]
