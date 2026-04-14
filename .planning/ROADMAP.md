@@ -119,7 +119,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
   3. A smoke-test script sends a text message to the deployed bot and asserts it receives a non-empty streamed reply within a timeout
   4. Harness lives under ~/hub (not inside animaya repo) and points at the bot via configurable username
   5. Running the smoke test from Claude Code prints PASS/FAIL with the bot's actual response text captured
-**Plans:** 0 plans
+**Plans:** 0/1 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 6 to break down)
+- [ ] 06-01-PLAN.md — Telethon harness at ~/hub/telethon/ (client, driver, smoke test, README)
