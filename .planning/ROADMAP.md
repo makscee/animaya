@@ -60,10 +60,15 @@ Plans:
   3. Registry tracks installed modules; querying it returns current state
   4. CLAUDE.md assembler produces a merged prompt containing core + all installed module prompts
   5. Modules interact only through shared Hub files — no cross-module code imports exist
-**Plans**: 2 plans
+**Plans:** 7 plans
 Plans:
-- [x] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
-- [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
+- [x] 03-00-PLAN.md — Wave 0 infra: add pydantic dep, tests/modules/ scaffolding, fixtures, test stubs
+- [ ] 03-01-PLAN.md — ModuleManifest pydantic model + validate_manifest (MODS-01)
+- [ ] 03-02-PLAN.md — Registry read/write/query API with atomic JSON (MODS-03)
+- [ ] 03-03-PLAN.md — install/uninstall lifecycle + env injection + auto-rollback + internal CLI (MODS-02)
+- [ ] 03-04-PLAN.md — CLAUDE.md assembler (install-order + XML wrap) + wire into main.py (MODS-04)
+- [ ] 03-05-PLAN.md — Bridge module dogfood + roundtrip e2e test + module authoring guide (MODS-05)
+- [ ] 03-06-PLAN.md — AST-based isolation test (MODS-06)
 
 ### Phase 4: First-Party Modules
 **Goal**: Identity, memory, and git versioning modules are installed and enrich every Claude interaction
