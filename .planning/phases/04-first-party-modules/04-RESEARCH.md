@@ -824,37 +824,43 @@ async def _post_init(application) -> None:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Injection channel for identity/memory content — assemble-time vs query-time?**
    - What we know: D-03 says "identity injection wraps each file in its own XML block inside the module's system-prompt snippet". Literal reading → assembler reads files.
    - What's unclear: CORE.md changes every session. Assembler runs at install/uninstall/boot. Who refreshes CLAUDE.md between boots? Nobody today.
    - Recommendation: **Query-time injection** via `bot/claude_query.build_options()`. Preserves Phase 3 contract; matches Phase 2 `_build_system_context()` pattern. Flagged for planner confirmation — if they insist on assemble-time, add an assembler refresh trigger after every memory write.
+   - **RESOLVED: query-time injection in `bot/claude_query.build_options()` (added in plan 04-01 via `_read_for_injection`); assemble-time NOT used for identity/memory content.**
 
 2. **Consolidation cadence — session-end, N-turn, time-based?**
    - What we know: D-09 says post-session, cadence is planner's call.
    - What's unclear: "Session" is fuzzy — Telegram chats are continuous.
    - Recommendation: Trigger fire-and-forget after every Nth successful reply (`context.chat_data["turn_count"] % 10 == 0`). Simplest to reason about; user can tune N via config.
+   - **RESOLVED: Nth-reply cadence via `consolidation_every_n_turns` config (default 10), tracked on `context.chat_data["turn_count"]`; fire-and-forget after `_finalize_stream`.**
 
 3. **Git repo root — `~/hub/` or `~/hub/knowledge/`?**
    - What we know: ANIMAYA_HUB_DIR is `~/hub/knowledge/animaya/` (Phase 3 D-06). Hub-level git covers all knowledge, not just animaya.
    - What's unclear: Is hub already a git repo on the target LXC?
    - Recommendation: Plan a small probe task ("run `git -C ~/hub rev-parse --show-toplevel`"). Install.sh falls back to `git init` if no repo exists, at `$HOME/hub/`.
+   - **RESOLVED: `~/hub/` is the git repo root (locked assumption A2 in 04-CONTEXT.md Locked Assumptions); install.sh falls back to `git init` at `$HOME/hub/` if missing.**
 
 4. **Memory file structure (D-07 deferred research)**
    - What we know: Planner must pick among flat / tiered / topic-index.
    - What's unclear: Usage patterns not yet known (no real bot traffic).
    - Recommendation: **Tiered**: CORE.md (always injected) + topical files (e.g., `people.md`, `projects.md`, `preferences.md`) read on demand. Matches v1 convention, matches `build_consolidation_prompt()` v1 shape, minimal cognitive load. Planner validates in plan-research pass.
+   - **RESOLVED: tiered memory — `CORE.md` (always injected via `<memory-core>`) + `README.md` scaffolding documenting topical files (people.md, projects.md, preferences.md) created on demand by Claude's Write tool.**
 
 5. **`/identity` under ConversationHandler vs plain CommandHandler?**
    - What we know: D-04 says same code path as IDEN-01 onboarding.
    - What's unclear: python-telegram-bot ConversationHandler is heavier; a plain CommandHandler + stateful user_data works too.
    - Recommendation: ConversationHandler. Adds <20 LOC, handles timeouts + /cancel cleanly.
+   - **RESOLVED: `ConversationHandler` (entry_points=`/identity` + sentinel-triggered first message); registered before the plain MessageHandler in `build_app`.**
 
 6. **Post-uninstall of identity while memory is installed — what happens to memory?**
    - What we know: Memory depends on identity (A7). Uninstall of identity is blocked per D-15 while memory is installed.
    - What's unclear: If user *removes* USER.md manually (not via uninstall), the bridge injects an empty identity block — silent UX issue.
    - Recommendation: Bridge's identity-reader logs a warning if the file is missing/placeholder at query time; no blocking.
+   - **RESOLVED: identity-missing degrades to a `logger.warning(...)` at query-time injection; no exception, no blocked send (warning-not-error).**
 
 ---
 

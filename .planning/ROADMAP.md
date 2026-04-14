@@ -63,12 +63,12 @@ Plans:
 **Plans:** 7 plans
 Plans:
 - [x] 03-00-PLAN.md — Wave 0 infra: add pydantic dep, tests/modules/ scaffolding, fixtures, test stubs
-- [ ] 03-01-PLAN.md — ModuleManifest pydantic model + validate_manifest (MODS-01)
-- [ ] 03-02-PLAN.md — Registry read/write/query API with atomic JSON (MODS-03)
-- [ ] 03-03-PLAN.md — install/uninstall lifecycle + env injection + auto-rollback + internal CLI (MODS-02)
-- [ ] 03-04-PLAN.md — CLAUDE.md assembler (install-order + XML wrap) + wire into main.py (MODS-04)
-- [ ] 03-05-PLAN.md — Bridge module dogfood + roundtrip e2e test + module authoring guide (MODS-05)
-- [ ] 03-06-PLAN.md — AST-based isolation test (MODS-06)
+- [x] 03-01-PLAN.md — ModuleManifest pydantic model + validate_manifest (MODS-01)
+- [x] 03-02-PLAN.md — Registry read/write/query API with atomic JSON (MODS-03)
+- [x] 03-03-PLAN.md — install/uninstall lifecycle + env injection + auto-rollback + internal CLI (MODS-02)
+- [x] 03-04-PLAN.md — CLAUDE.md assembler (install-order + XML wrap) + wire into main.py (MODS-04)
+- [x] 03-05-PLAN.md — Bridge module dogfood + roundtrip e2e test + module authoring guide (MODS-05)
+- [x] 03-06-PLAN.md — AST-based isolation test (MODS-06)
 
 ### Phase 4: First-Party Modules
 **Goal**: Identity, memory, and git versioning modules are installed and enrich every Claude interaction
@@ -78,11 +78,13 @@ Plans:
   1. New user completes onboarding and their identity appears in Claude's system prompt on the next message
   2. Assistant writes a memory fact; that fact persists in Hub knowledge/memory/ and appears in the next session's context
   3. Memory and identity files are git-committed on the configured interval without conflicts
-  4. User reconfigures identity from the dashboard without reinstalling the module; new identity is reflected immediately
-**Plans**: 2 plans
+  4. User reconfigures identity via the `/identity` Telegram command without reinstalling the module; new identity is reflected immediately. (Dashboard reconfigure variant is Phase 5 scope per D-04.)
+**Plans:** 4 plans
 Plans:
-- [x] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
-- [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
+- [ ] 04-00-PLAN.md — Wave 0: test infrastructure, Phase 4 fixtures, lock assumptions A1/A2/A7
+- [ ] 04-01-PLAN.md — Identity module: lifecycle, runtime, query-time injection, /identity ConversationHandler
+- [ ] 04-02-PLAN.md — Git-versioning module: asyncio commit loop, in-process Lock, post_init wiring
+- [ ] 04-03-PLAN.md — Memory module: Haiku consolidation, post-reply trigger, end-to-end smoke
 **UI hint**: yes
 
 ### Phase 5: Web Dashboard
@@ -111,7 +113,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Install & Foundation | 2/2 | Complete    | 2026-04-13 |
 | 2. Telegram Bridge | 2/2 | Complete   | 2026-04-13 |
 | 3. Module System | 0/TBD | Not started | - |
-| 4. First-Party Modules | 0/TBD | Not started | - |
+| 4. First-Party Modules | 0/4 | Not started | - |
 | 5. Web Dashboard | 0/TBD | Not started | - |
 
 ### Phase 6: Telethon test harness at hub level for end-to-end Telegram bot testing from Claude Code
