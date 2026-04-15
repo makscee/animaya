@@ -18,9 +18,11 @@ from telegram import Update
 from telegram.constants import ChatAction, ParseMode
 from telegram.ext import (
     Application,
+    ApplicationHandlerStop,
     CommandHandler,
     ContextTypes,
     MessageHandler,
+    TypeHandler,
     filters,
 )
 
@@ -624,6 +626,40 @@ async def _error_handler(update, context):
         logger.debug("events.emit failed for bridge error", exc_info=True)
 
 
+def _parse_owner_ids() -> set[int]:
+    """Parse TELEGRAM_OWNER_ID (comma-separated) into a set of ints.
+
+    Empty / unset → empty set. Callers treat empty set as "gate disabled".
+    """
+    raw = os.environ.get("TELEGRAM_OWNER_ID", "")
+    out: set[int] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            out.add(int(part))
+        except ValueError:
+            continue
+    return out
+
+
+async def _owner_gate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Drop updates from non-owner users when TELEGRAM_OWNER_ID is set.
+
+    Registered at group=-1 so it runs before any other handler. Raises
+    ApplicationHandlerStop to short-circuit the handler chain.
+    """
+    owners = _parse_owner_ids()
+    if not owners:
+        return  # gate disabled — bot is open (dev / pre-claim)
+    user = update.effective_user
+    if user is None or user.id not in owners:
+        uid = user.id if user is not None else None
+        logger.info("bridge: dropping update from non-owner user_id=%s", uid)
+        raise ApplicationHandlerStop
+
+
 def build_app(
     token: str,
     post_init: object | None = None,
@@ -636,6 +672,7 @@ def build_app(
     if post_init is not None:
         builder = builder.post_init(post_init)
     app = builder.build()
+    app.add_handler(TypeHandler(Update, _owner_gate), group=-1)
     app.add_handler(CommandHandler("start", _handle_start))
     # IDEN-04: /identity reconfigure ConversationHandler MUST be registered
     # BEFORE the catch-all MessageHandler so /identity is routed correctly
