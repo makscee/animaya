@@ -50,7 +50,11 @@ Archive: `.planning/milestones/` — ROADMAP, REQUIREMENTS, AUDIT, and all 7 pha
   2. With the bridge module present in the registry, the supervisor starts polling via `on_start(app_ctx, config)` and calling `on_stop()` shuts the updater down in the documented `updater.stop -> stop -> shutdown` order (verified via log assertions).
   3. A Telethon smoke test confirms install → message round-trips → uninstall → subsequent messages are ignored with no zombie polling loop (re-install from scratch also succeeds).
   4. `TELEGRAM_BOT_TOKEN` becomes optional environment input (bootstrap-only); the bridge module's `config.json` is the canonical source of truth when present.
-**Plans:** TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 08-01-PLAN.md — Supervisor foundation: AppContext, Supervisor, manifest runtime_entry field, registry propagation, Wave 0 test scaffolds
+- [ ] 08-02-PLAN.md — Bridge extraction: telegram_bridge runtime adapter (on_start/on_stop), modules/bridge -> modules/telegram-bridge rename + migration, lifecycle.uninstall on_stop wiring
+- [ ] 08-03-PLAN.md — Main.py cutover: D-8.7 boot order, TELEGRAM_BOT_TOKEN removed from required env, one-shot token seed, Telethon e2e smoke, LXC human verification
 
 #### Phase 9: Install Dialog & Owner-Claim FSM
 **Goal:** Owner installs and claims the bridge entirely from the dashboard — no `.env` edits, no systemd restarts, no env-var owner gate.
@@ -105,7 +109,7 @@ Archive: `.planning/milestones/` — ROADMAP, REQUIREMENTS, AUDIT, and all 7 pha
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Bridge Extraction & Supervisor Cutover | 0/0 | Not started | - |
+| 8. Bridge Extraction & Supervisor Cutover | 0/3 | Planned | - |
 | 9. Install Dialog & Owner-Claim FSM | 0/0 | Not started | - |
 | 10. Bridge Settings, Non-Owner Access & Tool-Use Display | 0/0 | Not started | - |
 | 11. Identity Pre-Install & File-Content Editor | 0/0 | Not started | - |
