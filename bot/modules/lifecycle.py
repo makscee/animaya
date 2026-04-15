@@ -3,9 +3,13 @@
 Implements D-11 env injection, D-12 registry-update-after-script-success,
 D-13 auto-rollback on install failure, D-14 no-reinstall, D-15 dependency
 rules, and owned_paths validation (T-03-01-02 path traversal defense).
+
+Phase 8 (D-8.6): uninstall() converted to async; accepts optional supervisor
+parameter to call on_stop before running uninstall.sh.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import os
@@ -13,6 +17,7 @@ import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from bot.events import emit as _emit_event
 from bot.modules.assembler import assemble_claude_md
@@ -23,6 +28,9 @@ from bot.modules.registry import (
     read_registry,
     remove_entry,
 )
+
+if TYPE_CHECKING:
+    from bot.modules.supervisor import Supervisor
 
 logger = logging.getLogger(__name__)
 
@@ -257,21 +265,26 @@ def _rollback_after_failed_install(
         )
 
 
-def uninstall(
+async def uninstall(
     name: str,
     hub_dir: Path,
     module_dir: Path,
+    *,
+    supervisor: "Supervisor | None" = None,
 ) -> None:
     """Uninstall a module end-to-end.
 
     Steps: name validation → registry lookup (D-14 inverse: must be installed)
-    → dependents check (D-15 reverse) → run uninstall.sh with env injection →
-    remove registry entry → owned_paths leakage check (MODS-05 enforcement).
+    → dependents check (D-15 reverse) → graceful on_stop if supervisor-managed
+    (D-8.6) → run uninstall.sh with env injection → remove registry entry →
+    purge config.json + state.json → owned_paths leakage check (MODS-05).
 
     Args:
         name: Installed module name.
         hub_dir: Hub directory holding registry.json.
         module_dir: Directory containing the module's manifest.json + scripts.
+        supervisor: Optional Supervisor instance. If provided and the module has
+                    a running handle, on_stop is awaited before uninstall.sh (D-8.6).
 
     Raises:
         KeyError: module not installed.
@@ -293,6 +306,22 @@ def uninstall(
             f"cannot uninstall {name!r}: dependents still installed: {dependents}"
         )
 
+    # ── Step 1: graceful on_stop if module is supervisor-managed (D-8.6) ─────
+    if supervisor is not None:
+        handle = supervisor.get_handle(name)
+        if handle is not None:
+            runtime_entry = supervisor._runtime_entries.get(name)
+            if runtime_entry:
+                try:
+                    mod = importlib.import_module(runtime_entry)
+                    await mod.on_stop(handle)
+                    logger.info("module %s on_stop completed", name)
+                except Exception:  # noqa: BLE001
+                    logger.exception("module %s on_stop failed — continuing uninstall", name)
+                finally:
+                    supervisor._handles.pop(name, None)
+                    supervisor._runtime_entries.pop(name, None)
+
     manifest = validate_manifest(module_dir) if module_dir.is_dir() else None
 
     if manifest is not None:
@@ -312,7 +341,7 @@ def uninstall(
                 )
             raise RuntimeError(f"uninstall.sh failed for {name!r} (rc={rc})")
 
-    # Registry cleanup first (if leakage check fails we still want registry truth)
+    # Registry cleanup (if leakage check fails we still want registry truth)
     remove_entry(hub_dir, name)
 
     # D-18: rebuild CLAUDE.md after registry change, BEFORE the leakage
@@ -322,6 +351,14 @@ def uninstall(
         assemble_claude_md(hub_dir)
     except Exception as exc:  # noqa: BLE001
         logger.warning("CLAUDE.md reassembly after uninstall failed: %s", exc)
+
+    # ── Step 5: purge config.json + state.json (D-8.6) ───────────────────────
+    config_path = module_dir / "config.json"
+    state_path = module_dir / "state.json"
+    for p in (config_path, state_path):
+        if p.exists():
+            p.unlink()
+            logger.info("purged %s", p)
 
     # MODS-05 leakage check — authoritative (raises on leak)
     if manifest is not None:

@@ -234,9 +234,7 @@ async def _run_uninstall(
             job_id=job.id,
         )
         try:
-            await asyncio.to_thread(
-                bot_modules.uninstall, name, hub_dir, module_dir,
-            )
+            await bot_modules.uninstall(name, hub_dir, module_dir)
             job.status = "done"
             events_emit(
                 "info", "modules.uninstall",

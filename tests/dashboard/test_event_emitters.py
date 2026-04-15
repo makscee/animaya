@@ -89,7 +89,7 @@ def test_lifecycle_install_emits_failure(
     assert errors, f"no install error events: {records}"
 
 
-def test_lifecycle_uninstall_emits_success(
+async def test_lifecycle_uninstall_emits_success(
     valid_module_dir: Path, tmp_hub_dir: Path, events_log: Path
 ) -> None:
     """uninstall() on success emits info event with source=modules.uninstall."""
@@ -100,7 +100,7 @@ def test_lifecycle_uninstall_emits_success(
     # Clear events_log so we only look at uninstall emissions
     events_log.write_text("", encoding="utf-8")
 
-    lifecycle.uninstall("sample", tmp_hub_dir, valid_module_dir)
+    await lifecycle.uninstall("sample", tmp_hub_dir, valid_module_dir)
 
     records = _read_events(events_log)
     matches = [r for r in records if r.get("source") == "modules.uninstall"]

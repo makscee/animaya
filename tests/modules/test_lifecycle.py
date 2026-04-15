@@ -63,17 +63,17 @@ class TestLifecycle:
             mods.install(mod_dir, tmp_hub_dir)
         assert mods.list_installed(tmp_hub_dir) == []
 
-    def test_uninstall_removes_registry_entry(
+    async def test_uninstall_removes_registry_entry(
         self, valid_module_dir: Path, tmp_hub_dir: Path
     ) -> None:
         mods.install(valid_module_dir, tmp_hub_dir)
-        mods.uninstall("sample", tmp_hub_dir, valid_module_dir)
+        await mods.uninstall("sample", tmp_hub_dir, valid_module_dir)
         assert mods.list_installed(tmp_hub_dir) == []
         assert not (tmp_hub_dir / ".sample-marker").exists()
 
-    def test_uninstall_of_uninstalled_module_rejected(self, tmp_hub_dir: Path) -> None:
+    async def test_uninstall_of_uninstalled_module_rejected(self, tmp_hub_dir: Path) -> None:
         with pytest.raises(Exception) as exc_info:
-            mods.uninstall("ghost", tmp_hub_dir, tmp_hub_dir)
+            await mods.uninstall("ghost", tmp_hub_dir, tmp_hub_dir)
         assert "not installed" in str(exc_info.value).lower()
 
     def test_missing_dependency_rejected(self, tmp_path: Path, tmp_hub_dir: Path) -> None:
