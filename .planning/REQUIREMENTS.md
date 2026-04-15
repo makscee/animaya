@@ -2,7 +2,7 @@
 
 **Milestone:** v2.0
 **Started:** 2026-04-15
-**Status:** Defining
+**Status:** Roadmapped
 
 ## v2.0 Requirements
 
@@ -68,7 +68,33 @@
 
 ## Traceability
 
-_(Filled by roadmapper in Step 10 — REQ → Phase map.)_
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BRDG-01 | Phase 8  — Bridge Extraction & Supervisor Cutover | Pending |
+| BRDG-02 | Phase 9  — Install Dialog & Owner-Claim FSM | Pending |
+| BRDG-03 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| BRDG-04 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| CLAIM-01 | Phase 9  — Install Dialog & Owner-Claim FSM | Pending |
+| CLAIM-02 | Phase 9  — Install Dialog & Owner-Claim FSM | Pending |
+| CLAIM-03 | Phase 9  — Install Dialog & Owner-Claim FSM | Pending |
+| CLAIM-04 | Phase 9  — Install Dialog & Owner-Claim FSM | Pending |
+| ACC-01 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| ACC-02 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| ACC-03 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| TUI-01 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| TUI-02 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| TUI-03 | Phase 10 — Bridge Settings, Non-Owner Access & Tool-Use Display | Pending |
+| IDN-01 | Phase 11 — Identity Pre-Install & File-Content Editor | Pending |
+| IDN-02 | Phase 11 — Identity Pre-Install & File-Content Editor | Pending |
+| IDN-03 | Phase 11 — Identity Pre-Install & File-Content Editor | Pending |
+| DASH-01 | Phase 12 — Dashboard SSE Chat & Hub File Tree | Pending |
+| DASH-02 | Phase 12 — Dashboard SSE Chat & Hub File Tree | Pending |
+| DASH-03 | Phase 12 — Dashboard SSE Chat & Hub File Tree | Pending |
+| DASH-04 | Phase 12 — Dashboard SSE Chat & Hub File Tree | Pending |
+| SEC-01 | Phase 9  — Install Dialog & Owner-Claim FSM (re-asserted in Phase 10) | Pending |
+| SEC-02 | Phase 12 — Dashboard SSE Chat & Hub File Tree | Pending |
+
+**Coverage:** 21/21 v2.0 requirements mapped (100%), plus SEC-01 re-verified in Phase 10 success criteria.
 
 ---
 *v1.0 archive: `.planning/milestones/` — 27 REQ validated (INST/TELE/MODS/IDEN/MEMO/GITV/DASH/TEST).*

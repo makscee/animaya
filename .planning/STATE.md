@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Onboarding Polish & Bridge-as-Module
-status: defining_requirements
+status: ready_to_plan_phase
 stopped_at: ""
 last_updated: "2026-04-15T00:00:00.000Z"
-last_activity: 2026-04-15 -- milestone v2.0 started
+last_activity: 2026-04-15 -- v2.0 roadmap created (phases 8-12)
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,33 +21,48 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Any user can spin up a personal AI assistant by installing Animaya on their Claude Box, then customize it module-by-module — each module is self-contained, configurable, and reversible.
-**Current focus:** Planning next milestone
+**Current focus:** v2.0 — Onboarding Polish & Bridge-as-Module
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 8 (Bridge Extraction & Supervisor Cutover) — not yet planned
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-15 — Milestone v2.0 started
+Status: Ready for `/gsd-plan-phase 8`
+Last activity: 2026-04-15 — v2.0 roadmap created (5 phases, 21 REQ mapped, 100% coverage)
 
 Progress: [          ] 0%
+
+## Milestone v2.0 Plan
+
+- 5 phases (8–12), phase numbering continues from v1.0
+- 21 v2.0 requirements mapped across 6 categories (BRDG, CLAIM, ACC, TUI, IDN, DASH, SEC)
+- Critical path: 8 → 9 → 10 → 12; Phase 11 parallelizable with 10
+- Research flags: Phase 10 (non-owner SDK semantics), Phase 12 (SSE spike)
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 8 | Bridge Extraction & Supervisor Cutover | BRDG-01, BRDG-03, BRDG-04 | Not started |
+| 9 | Install Dialog & Owner-Claim FSM | BRDG-02, CLAIM-01..04, SEC-01 | Not started |
+| 10 | Bridge Settings, Non-Owner Access & Tool-Use Display | BRDG-03, BRDG-04, ACC-01..03, TUI-01..03 | Not started |
+| 11 | Identity Pre-Install & File-Content Editor | IDN-01..03 | Not started |
+| 12 | Dashboard SSE Chat & Hub File Tree | DASH-01..04, SEC-02 | Not started |
 
 ## Milestone v1.0 Summary
 
 - 7 phases, 29 plans, 27/27 v1 REQ satisfied + 3 TEST REQ
-- Audit status: tech_debt (all requirements satisfied; Nyquist partial on phases 01/03/05; streaming artifact deferred)
+- Audit status: tech_debt (Nyquist partial on 01/03/05; streaming artifact deferred)
 - Archive: `.planning/milestones/`
 - Tag: v1.0
 
 ## Performance Metrics
 
-**Velocity:**
+**v1.0 Velocity:**
 
 - Total plans completed: 29
 - Total phases: 7
 - Duration: ~3 days (2026-04-13 to 2026-04-15)
 
-**By Phase:**
+**v1.0 by Phase:**
 
 | Phase | Plans | Status |
 |-------|-------|--------|
@@ -63,7 +78,11 @@ Progress: [          ] 0%
 
 ### Decisions
 
-All v1.0 decisions logged in PROJECT.md Key Decisions table.
+All v1.0 decisions logged in PROJECT.md Key Decisions table. v2.0 carries them forward:
+- Phase numbering continues (no reset) — 999.1 backlog item absorbed into v2.0 phases 8–10.
+- Zero new pip dependencies in v2.0 — only htmx 2.0.8 + htmx-ext-sse vendored for Phase 12 SSE chat.
+- SEC-01 (token redaction) is verified in Phase 9 and re-asserted in Phase 10 success criteria.
+- SEC-02 (session key namespacing) lands in Phase 12.
 
 ### Known Tech Debt (from v1.0)
 
@@ -73,19 +92,22 @@ All v1.0 decisions logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-Review tech debt register at start of v2.0 planning.
+- `/gsd-plan-phase 8` to decompose Phase 8 into executable plans
+- Research spike during Phase 10 planning: confirm SDK 0.0.25 `allowed_tools` / `permission_mode` semantics for non-owner turns
+- Research spike during Phase 12 planning: SSE disconnect/reconnect semantics under HTMX (raw `StreamingResponse` vs `sse-starlette`)
 
 ### Blockers/Concerns
 
-None — clean milestone complete.
+None — v2.0 roadmap validated with 100% requirement coverage (21/21).
 
 ### Roadmap Evolution
 
 - v1.0 shipped 2026-04-15
-- Next: run `/gsd-new-milestone` to begin v2.0 planning
+- v2.0 roadmap created 2026-04-15 — 5 phases (8–12), 21 REQ mapped
+- Next: `/gsd-plan-phase 8`
 
 ## Session Continuity
 
 Last session: 2026-04-15
-Stopped at: v2.0 requirements step
-Resume: continue `/gsd-new-milestone` or run `/gsd-plan-phase [N]` after roadmap
+Stopped at: v2.0 roadmap complete — ready to plan Phase 8
+Resume: `/gsd-plan-phase 8`
