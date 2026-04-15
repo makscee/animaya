@@ -1,21 +1,22 @@
 ---
 phase: 06-telethon-test-harness-at-hub-level-for-end-to-end-telegram-b
 verified: 2026-04-15T00:00:00Z
-status: human_needed
-score: 4/5 must-haves verified
+status: passed
+score: 5/5 must-haves verified
 overrides_applied: 0
-human_verification:
-  - test: "Run smoke test after MTProto session exists"
-    expected: "Exit code 0, last line contains 'PASS — bot echoed TELETHON_SMOKE_OK'"
-    why_human: "Requires live MTProto credentials, SMS code on first run, and a running @mks_test_assistant_bot — cannot be executed headlessly by verifier"
+live_smoke:
+  executed: 2026-04-15
+  runner: "~/hub/telethon/.venv/bin/python tests/smoke_text_roundtrip.py"
+  result: "PASS — bot echoed TELETHON_SMOKE_OK (36-char reply)"
 ---
 
 # Phase 6: Telethon Test Harness Verification Report
 
 **Phase Goal:** Claude Code (running at ~/hub) can drive real Telegram conversations against the deployed Animaya bot programmatically — send a message, receive the streamed reply, assert on its content — so bot behavior can be tested end-to-end without manual Telegram interaction.
 **Verified:** 2026-04-15T00:00:00Z
-**Status:** human_needed
+**Status:** passed
 **Re-verification:** No — initial verification
+**Live smoke:** Executed 2026-04-15 via `~/hub/telethon/.venv/bin/python tests/smoke_text_roundtrip.py` — bot echoed `TELETHON_SMOKE_OK` (36-char reply), exit 0.
 
 ## Goal Achievement
 
@@ -23,13 +24,13 @@ human_verification:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Running `python tests/smoke_text_roundtrip.py` from `~/hub/telethon/` on a machine with valid credentials and a live session exits 0 and prints the bot's reply text | ? HUMAN | Code structure is correct (exit 0 on PASS, exit 1 on FAIL, prints reply). Live execution requires real MTProto session + running bot. |
-| 2 | First run prompts for SMS code interactively and writes `animaya.session`; subsequent runs reuse session without prompting | ? HUMAN | `client.py` uses `TelegramClient.start(phone=phone)` — Telethon handles interactive prompt automatically. `animaya.session` (29KB) exists per SUMMARY. Session reuse is Telethon-native behavior. Cannot verify interactivity programmatically. |
+| 1 | Running smoke test from `~/hub/telethon/` on a machine with valid credentials and a live session exits 0 and prints the bot's reply text | ✓ VERIFIED | Executed 2026-04-15 via `.venv/bin/python tests/smoke_text_roundtrip.py`: connected, sent prompt, received `TELETHON_SMOKE_OK` (36 chars), `[smoke] PASS` printed, exit 0. |
+| 2 | First run prompts for SMS code interactively and writes `animaya.session`; subsequent runs reuse session without prompting | ✓ VERIFIED (reuse path) | Session reuse confirmed live — existing `animaya.session` drove the smoke run headless (no prompt). First-run interactive SMS path is Telethon-native via `TelegramClient.start(phone=phone)`; cannot be re-tested without deleting the session. |
 | 3 | The driver waits for bot's streamed edits to settle before returning the final reply | ✓ VERIFIED | `driver.py` implements 2-phase wait: Phase 1 waits for `substantive_count > 0` (ignoring placeholder "…"), Phase 2 waits `settle` seconds of quiet on `last_substantive_at`. `_PLACEHOLDER_MAX_LEN=3` heuristic distinguishes real content. |
 | 4 | The harness lives entirely under `~/hub/telethon/` and imports nothing from the animaya repo | ✓ VERIFIED | `grep -rn "from bot\|import bot"` across `~/hub/telethon/` returned no matches. All imports are from `telethon`, `dotenv`, or local `client`/`driver` modules. |
 | 5 | `.env` and `*.session*` files are gitignored and never committed | ✓ VERIFIED | `.gitignore` contains `.env`, `*.session`, `*.session-journal`. |
 
-**Score:** 4/5 truths verified (1 cannot be verified programmatically — requires human)
+**Score:** 5/5 truths verified (live smoke executed successfully)
 
 ### Deferred Items
 
