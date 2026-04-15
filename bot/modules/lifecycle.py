@@ -200,6 +200,8 @@ def install(
         # Record module dir so the assembler can locate prompt.md for modules
         # installed outside DEFAULT_MODULES_ROOT (e.g., during tests).
         "module_dir": str(module_dir),
+        # D-8.1: propagate runtime_entry so Supervisor reads it from registry.
+        "runtime_entry": manifest.runtime_entry,
     }
     add_entry(hub_dir, entry)
     logger.info("Installed module %s@%s", manifest.name, manifest.version)
