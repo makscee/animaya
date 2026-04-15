@@ -95,12 +95,13 @@ async def _run(data_path: Path) -> None:
     tg_app = build_app(token, post_init=_post_init)
 
     dashboard_app = build_dashboard_app(hub_dir=data_path)
+    dashboard_host = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
     config = uvicorn.Config(
         dashboard_app,
-        host="127.0.0.1",
+        host=dashboard_host,
         port=int(os.environ.get("DASHBOARD_PORT", "8090")),
         proxy_headers=True,
-        forwarded_allow_ips="127.0.0.1",
+        forwarded_allow_ips=os.environ.get("DASHBOARD_FORWARDED_ALLOW_IPS", "127.0.0.1"),
         log_level="info",
     )
     server = uvicorn.Server(config)
