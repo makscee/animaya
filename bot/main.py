@@ -32,7 +32,7 @@ REQUIRED_ENV_VARS: tuple[str, ...] = (
     "CLAUDE_CODE_OAUTH_TOKEN",
     "SESSION_SECRET",
     "TELEGRAM_OWNER_ID",
-    "TELEGRAM_BOT_USERNAME",
+    "DASHBOARD_TOKEN",
 )
 DEFAULT_DATA_PATH = str(Path.home() / "hub" / "knowledge" / "animaya")
 
