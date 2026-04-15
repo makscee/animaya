@@ -14,6 +14,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from bot.events import emit as _emit_event
 from bot.modules.assembler import assemble_claude_md
 from bot.modules.manifest import ModuleManifest, validate_manifest
 from bot.modules.registry import (
@@ -176,6 +177,15 @@ def install(
     rc = _run_script(script, module_dir, hub_dir, config)
     if rc != 0:
         logger.error("install.sh failed (rc=%d) for %s — rolling back", rc, name)
+        try:
+            _emit_event(
+                "error",
+                "modules.install",
+                f"{name} install.sh failed",
+                rc=rc,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("events.emit failed for modules.install error", exc_info=True)
         _rollback_after_failed_install(manifest, module_dir, hub_dir, config)
         raise RuntimeError(f"install.sh failed for module {name!r} (rc={rc})")
 
@@ -193,6 +203,14 @@ def install(
     }
     add_entry(hub_dir, entry)
     logger.info("Installed module %s@%s", manifest.name, manifest.version)
+    try:
+        _emit_event(
+            "info",
+            "modules.install",
+            f"{manifest.name}@{manifest.version} installed",
+        )
+    except Exception:  # noqa: BLE001
+        logger.debug("events.emit failed for modules.install success", exc_info=True)
 
     # D-18: rebuild CLAUDE.md at end of install. Failure here must not
     # undo the install; log and continue.
@@ -279,6 +297,17 @@ def uninstall(
         script = module_dir / manifest.scripts.uninstall
         rc = _run_script(script, module_dir, hub_dir, entry.get("config", {}))
         if rc != 0:
+            try:
+                _emit_event(
+                    "error",
+                    "modules.uninstall",
+                    f"{name} uninstall.sh failed",
+                    rc=rc,
+                )
+            except Exception:  # noqa: BLE001
+                logger.debug(
+                    "events.emit failed for modules.uninstall error", exc_info=True
+                )
             raise RuntimeError(f"uninstall.sh failed for {name!r} (rc={rc})")
 
     # Registry cleanup first (if leakage check fails we still want registry truth)
@@ -306,3 +335,7 @@ def uninstall(
                 f"uninstall of {name!r} left owned_paths: {leaked}"
             )
     logger.info("Uninstalled module %s", name)
+    try:
+        _emit_event("info", "modules.uninstall", f"{name} uninstalled")
+    except Exception:  # noqa: BLE001
+        logger.debug("events.emit failed for modules.uninstall success", exc_info=True)

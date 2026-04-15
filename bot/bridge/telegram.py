@@ -25,6 +25,7 @@ from telegram.ext import (
 )
 
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
+from bot.events import emit as _emit_event
 from bot.modules.registry import get_entry as _registry_get_entry
 from bot.modules_runtime.identity import build_onboarding_handler
 from bot.modules_runtime.memory import maybe_trigger_consolidation
@@ -492,6 +493,15 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         logger.info("[chat=%s user=%s] %s", update.effective_chat.id, user_id, text[:200])
         _stats["messages_received"] += 1
+        try:
+            _emit_event(
+                "info",
+                "bridge",
+                "message received",
+                chat_id=update.effective_chat.id,
+            )
+        except Exception:  # noqa: BLE001 — events are best-effort
+            logger.debug("events.emit failed for bridge received", exc_info=True)
 
         envelope = _envelope_message(update, text)
         system_context = _build_system_context(update)
@@ -551,6 +561,17 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     _stats["messages_sent"] += 1
                     await _finalize_stream(state, accumulated, update)
                     await _send_referenced_files(accumulated, update)
+                    try:
+                        _emit_event(
+                            "info",
+                            "bridge",
+                            "reply sent",
+                            chat_id=update.effective_chat.id,
+                        )
+                    except Exception:  # noqa: BLE001
+                        logger.debug(
+                            "events.emit failed for bridge reply", exc_info=True
+                        )
                     # MEMO-03: post-reply consolidation trigger (fire-and-forget).
                     # Gated on memory module being installed; cadence + model from registry config.
                     try:
@@ -591,6 +612,16 @@ async def _error_handler(update, context):
     if "Timed out" in str(context.error) or "NetworkError" in str(context.error):
         return
     logger.warning("Telegram error: %s", context.error)
+    try:
+        err = context.error
+        _emit_event(
+            "error",
+            "bridge",
+            f"handler exception: {type(err).__name__}",
+            error=str(err),
+        )
+    except Exception:  # noqa: BLE001
+        logger.debug("events.emit failed for bridge error", exc_info=True)
 
 
 def build_app(

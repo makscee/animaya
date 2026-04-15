@@ -12,6 +12,7 @@ import logging
 import os
 from pathlib import Path
 
+from bot.events import emit as _emit_event
 from bot.modules.manifest import validate_manifest
 from bot.modules.registry import read_registry
 
@@ -185,4 +186,13 @@ def assemble_claude_md(
     logger.info(
         "CLAUDE.md assembled at %s (%d modules)", output_path, len(sections)
     )
+    try:
+        _emit_event(
+            "info",
+            "assembler",
+            "CLAUDE.md rebuilt",
+            modules=[e.get("name") for e in entries if e.get("name")],
+        )
+    except Exception:  # noqa: BLE001 — events are best-effort
+        logger.debug("events.emit failed for assembler", exc_info=True)
     return output
