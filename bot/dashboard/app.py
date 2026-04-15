@@ -60,6 +60,7 @@ def build_app(hub_dir: Path) -> FastAPI:
     _register_home_placeholder(app)
     _register_home_routes_if_available(app)
     _register_module_routes_if_available(app)
+    _register_bridge_routes_if_available(app)
     return app
 
 
@@ -139,6 +140,15 @@ def _register_module_routes_if_available(app: FastAPI) -> None:
     except ImportError:
         return
     module_routes.register(app, templates)
+
+
+def _register_bridge_routes_if_available(app: FastAPI) -> None:
+    """Phase 9 bridge-specific routes: install dialog + claim-status stub."""
+    try:
+        from bot.dashboard import bridge_routes  # noqa: PLC0415
+    except ImportError:
+        return
+    bridge_routes.register(app, templates)
 
 
 __all__ = ["build_app", "templates"]

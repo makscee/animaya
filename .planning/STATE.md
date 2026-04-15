@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: — Onboarding Polish & Bridge-as-Module
 status: executing
 stopped_at: Phase 9 context gathered
-last_updated: "2026-04-15T22:26:34.157Z"
-last_activity: 2026-04-15 -- Phase 09 planning complete
+last_updated: "2026-04-15T23:04:24.085Z"
+last_activity: 2026-04-15 -- Phase 09 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Any user can spin up a personal AI assistant by installing Animaya on their Claude Box, then customize it module-by-module — each module is self-contained, configurable, and reversible.
-**Current focus:** Phase 08 — bridge-extraction-supervisor-cutover
+**Current focus:** Phase 09 — install-dialog-owner-claim-fsm
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-15 -- Phase 09 planning complete
+Phase: 09 (install-dialog-owner-claim-fsm) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 09
+Last activity: 2026-04-15 -- Phase 09 execution started
 
 Progress: [          ] 0%
 

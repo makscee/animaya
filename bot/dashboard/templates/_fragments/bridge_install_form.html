@@ -1,0 +1,21 @@
+{% if has_token %}
+<div class="field-help" style="margin-bottom:1rem">
+  Bridge token is configured. To replace it, submit a new token below.
+</div>
+{% endif %}
+<div class="field">
+  <label for="token-input">Bot Token</label>
+  <input id="token-input" name="token" type="password"
+         placeholder="110201543:AAHdqTcvCH1vGWJxfSeofSz^MXFggAndnqQ"
+         class="input">
+  <p class="field-help">Paste your bot token from @BotFather.</p>
+</div>
+<div id="status-toast"></div>
+<button class="btn btn-success"
+        hx-post="/api/modules/telegram-bridge/install"
+        hx-include="[name='token']"
+        hx-ext="json-enc"
+        hx-target="#status-toast"
+        hx-swap="innerHTML">
+  Install Bridge
+</button>

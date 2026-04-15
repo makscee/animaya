@@ -29,6 +29,7 @@ from bot.dashboard.jobs import (
 from bot.dashboard.modules_view import all_cards, describe, module_dir_for
 from bot.modules import get_entry
 from bot.modules.manifest import validate_manifest
+from bot.modules.telegram_bridge_state import redact_bridge_config
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,15 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:
         manifest = validate_manifest(module_dir_for(name))
         schema = manifest.config_schema
         if not schema or not schema.get("properties"):
+            # telegram-bridge: no schema — render install form or "no config" msg
+            if name == "telegram-bridge":
+                safe_entry = redact_bridge_config(entry)
+                has_token = safe_entry["config"].get("has_token", False)
+                return templates.TemplateResponse(
+                    request,
+                    "_fragments/bridge_install_form.html",
+                    {"has_token": has_token, "name": name},
+                )
             return templates.TemplateResponse(
                 request,
                 "_fragments/config_form_saved.html",
@@ -161,7 +171,11 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:
                     "no_schema": True,
                 },
             )
-        fields = render_fields(schema, entry.get("config") or {})
+        # Redact token from config before passing to render_fields (T-09-01)
+        raw_config = entry.get("config") or {}
+        if name == "telegram-bridge":
+            raw_config = redact_bridge_config({"config": raw_config})["config"]
+        fields = render_fields(schema, raw_config)
         return templates.TemplateResponse(
             request,
             "_fragments/config_form.html",
