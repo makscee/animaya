@@ -2,10 +2,32 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
+
+# Path to shared module fixtures (reused from tests/modules/fixtures/).
+_MODULE_FIXTURES_ROOT = Path(__file__).parent.parent / "modules" / "fixtures"
+
+
+@pytest.fixture
+def tmp_hub_dir(tmp_path: Path) -> Path:
+    """Tmp Hub directory mirroring tests/modules/conftest.py:tmp_hub_dir."""
+    hub = tmp_path / "hub" / "knowledge" / "animaya"
+    hub.mkdir(parents=True, exist_ok=True)
+    return hub
+
+
+@pytest.fixture
+def valid_module_dir(tmp_path: Path) -> Path:
+    """Copy of the tests/modules/fixtures/valid-module tree."""
+    dest = tmp_path / "modules" / "sample"
+    shutil.copytree(_MODULE_FIXTURES_ROOT / "valid-module", dest)
+    (dest / "install.sh").chmod(0o755)
+    (dest / "uninstall.sh").chmod(0o755)
+    return dest
 
 
 @pytest.fixture
