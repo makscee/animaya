@@ -53,7 +53,7 @@ Archive: `.planning/milestones/` — ROADMAP, REQUIREMENTS, AUDIT, and all 7 pha
 **Plans:** 3 plans
 Plans:
 - [x] 08-01-PLAN.md — Supervisor foundation: AppContext, Supervisor, manifest runtime_entry field, registry propagation, Wave 0 test scaffolds
-- [ ] 08-02-PLAN.md — Bridge extraction: telegram_bridge runtime adapter (on_start/on_stop), modules/bridge -> modules/telegram-bridge rename + migration, lifecycle.uninstall on_stop wiring
+- [x] 08-02-PLAN.md — Bridge extraction: telegram_bridge runtime adapter (on_start/on_stop), modules/bridge -> modules/telegram-bridge rename + migration, lifecycle.uninstall on_stop wiring
 - [ ] 08-03-PLAN.md — Main.py cutover: D-8.7 boot order, TELEGRAM_BOT_TOKEN removed from required env, one-shot token seed, Telethon e2e smoke, LXC human verification
 
 #### Phase 9: Install Dialog & Owner-Claim FSM
