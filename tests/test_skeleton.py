@@ -88,7 +88,11 @@ class TestTelegramBridgeIntegration:
         mock_app = MagicMock()
         with patch("bot.bridge.telegram.build_app", return_value=mock_app) as mock_build:
             main()
-        mock_build.assert_called_once_with("my-bot-token")
+        # Phase 4 added post_init kwarg for git-versioning commit loop.
+        mock_build.assert_called_once()
+        args, kwargs = mock_build.call_args
+        assert args == ("my-bot-token",)
+        assert set(kwargs.keys()) <= {"post_init"}
 
     def test_main_calls_run_polling(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
