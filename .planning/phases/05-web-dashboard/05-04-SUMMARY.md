@@ -4,6 +4,9 @@ phase: 05-web-dashboard
 title: Home page with live status, activity feed, error feed
 status: complete
 completed: 2026-04-15
+nyquist_compliant: true
+nyquist_signed_off: 2026-04-15
+nyquist_retroactive: true
 ---
 
 # Plan 05-04 Summary

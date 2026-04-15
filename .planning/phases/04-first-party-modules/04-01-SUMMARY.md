@@ -35,6 +35,9 @@ metrics:
   completed: "2026-04-15"
   tasks: 4
   files: 12
+nyquist_compliant: true
+nyquist_signed_off: 2026-04-15
+nyquist_retroactive: true
 ---
 
 # Phase 4 Plan 1: Identity Module Summary

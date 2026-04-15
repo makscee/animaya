@@ -30,6 +30,9 @@ requirements:
   - INST-02
   - INST-03
   - INST-04
+nyquist_compliant: true
+nyquist_signed_off: 2026-04-15
+nyquist_retroactive: true
 ---
 
 # Phase 1 Plan 02: Bot Skeleton Entry Point Summary

@@ -24,6 +24,10 @@ metrics:
   tasks_completed: 1
   tasks_total: 2
   files_modified: 2
+nyquist_compliant: true
+nyquist_signed_off: 2026-04-15
+nyquist_retroactive: true
+nyquist_gap_reason: "threat_model not enforced at Phase 02 plan time; behavioral tests in tests/test_bridge.py cover all TELE-XX"
 ---
 
 # Phase 2 Plan 02: Wire Telegram Bridge — Summary

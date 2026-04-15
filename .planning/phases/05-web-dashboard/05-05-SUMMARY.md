@@ -4,6 +4,9 @@ phase: 05-web-dashboard
 title: Modules list, detail, async install/uninstall jobs
 status: complete
 completed: 2026-04-15
+nyquist_compliant: true
+nyquist_signed_off: 2026-04-15
+nyquist_retroactive: true
 ---
 
 # Plan 05-05 Summary

@@ -40,6 +40,9 @@ decisions:
 metrics:
   duration: "continuation run (~5 min verify + summary)"
   completed: 2026-04-15
+nyquist_compliant: true
+nyquist_signed_off: 2026-04-15
+nyquist_retroactive: true
 ---
 
 # Phase 6 Plan 01: Telethon Test Harness Summary
