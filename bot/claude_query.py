@@ -12,6 +12,31 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# ── Identity / memory injection ─────────────────────────────────────
+HUB_KNOWLEDGE: Path = Path.home() / "hub" / "knowledge"
+_PLACEHOLDER_MARKER = "<!-- animaya:placeholder -->"
+_MAX_INJECT_CHARS = 8_000
+
+
+def _read_for_injection(p: Path) -> str:
+    """Return file content if present and non-placeholder; else empty string.
+
+    Truncates at _MAX_INJECT_CHARS to bound prompt size. Escapes any closing
+    XML tags that match Animaya's injection wrappers so a malicious file
+    cannot break out of its block (T-04-01-03).
+    """
+    if not p.is_file():
+        return ""
+    text = p.read_text(encoding="utf-8").strip()
+    if not text or _PLACEHOLDER_MARKER in text:
+        return ""
+    if len(text) > _MAX_INJECT_CHARS:
+        text = text[:_MAX_INJECT_CHARS] + "\n…[truncated]"
+    # Escape closing tags for Animaya's three injection wrappers
+    for tag in ("identity-user", "identity-soul", "memory-core"):
+        text = text.replace(f"</{tag}>", f"&lt;/{tag}&gt;")
+    return text
+
 
 def build_options(
     data_dir: Path | None = None,
@@ -37,7 +62,19 @@ def build_options(
     if system_prompt_extra:
         parts.append(system_prompt_extra)
 
-    # Phase 4 adds memory context here
+    # IDEN-03: identity injection (XML-delimited per D-03)
+    user_md = _read_for_injection(HUB_KNOWLEDGE / "identity" / "USER.md")
+    soul_md = _read_for_injection(HUB_KNOWLEDGE / "identity" / "SOUL.md")
+    if user_md:
+        parts.append(f"<identity-user>\n{user_md}\n</identity-user>")
+    if soul_md:
+        parts.append(f"<identity-soul>\n{soul_md}\n</identity-soul>")
+
+    # MEMO-04: core memory injection (CORE.md is auto-maintained by Haiku
+    # consolidation in plan 04-03; safe to inject early — empty string when absent).
+    core_md = _read_for_injection(HUB_KNOWLEDGE / "memory" / "CORE.md")
+    if core_md:
+        parts.append(f"<memory-core>\n{core_md}\n</memory-core>")
 
     system_prompt = "\n\n".join(parts) if parts else ""
 
