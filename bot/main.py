@@ -185,6 +185,7 @@ async def _run(data_path: Path) -> None:
         dashboard_app=dashboard_app,
     )
     supervisor = Supervisor()
+    dashboard_app.state.supervisor = supervisor
     await supervisor.start_all(ctx)
 
     # ── Step 4: Wait for shutdown signal ─────────────────────────────────────

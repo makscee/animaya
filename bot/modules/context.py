@@ -4,7 +4,10 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 # ── Type alias ───────────────────────────────────────────────────────
 EventBus = Callable[[str, str, str], None]
@@ -26,4 +29,4 @@ class AppContext:
     data_path: Path
     stop_event: asyncio.Event
     event_bus: EventBus
-    dashboard_app: object | None = field(default=None)
+    dashboard_app: FastAPI | None = field(default=None)

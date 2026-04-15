@@ -161,6 +161,7 @@ async def start_uninstall(
     name: str,
     hub_dir: Path,
     module_dir: Path,
+    app: object | None = None,
 ) -> JobState:
     """Enqueue an uninstall job. Raises :class:`InProgressError` if lock held."""
     if _lock.locked():
@@ -173,7 +174,7 @@ async def start_uninstall(
         started=datetime.now(timezone.utc),
     )
     _jobs[job.id] = job
-    asyncio.create_task(_run_uninstall(job, name, hub_dir, module_dir))
+    asyncio.create_task(_run_uninstall(job, name, hub_dir, module_dir, app))
     return job
 
 
@@ -225,6 +226,7 @@ async def _run_uninstall(
     name: str,
     hub_dir: Path,
     module_dir: Path,
+    app: object | None = None,
 ) -> None:
     async with _lock:
         handler = _install_handler(job.log_lines)
@@ -234,7 +236,8 @@ async def _run_uninstall(
             job_id=job.id,
         )
         try:
-            await bot_modules.uninstall(name, hub_dir, module_dir)
+            supervisor = app.state.supervisor if (app is not None and hasattr(app.state, "supervisor")) else None  # noqa: E501
+            await bot_modules.uninstall(name, hub_dir, module_dir, supervisor=supervisor)
             job.status = "done"
             events_emit(
                 "info", "modules.uninstall",
