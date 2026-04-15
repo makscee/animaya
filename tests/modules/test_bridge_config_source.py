@@ -162,7 +162,6 @@ async def test_config_json_token_is_canonical(
     )
 
 
-@pytest.mark.xfail(reason="lands in Plan 02: bot.modules.migrate_registry not yet implemented", strict=True)
 async def test_bridge_rename_migration_bridge_to_telegram_bridge(tmp_path: Path) -> None:
     """BRDG-04: Old 'bridge' registry entry migrated to 'telegram-bridge' on startup.
 

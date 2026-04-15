@@ -6,8 +6,11 @@ Public API (added incrementally across plans):
                        add_entry, remove_entry
   - Plan 03 (MODS-02): install, uninstall
   - Plan 04 (MODS-04): assemble_claude_md
+  - Phase 08 Plan 02 (D-8.5): migrate_registry (one-shot bridge→telegram-bridge rename)
 """
 from __future__ import annotations
+
+from pathlib import Path
 
 from bot.modules.assembler import assemble_claude_md
 from bot.modules.lifecycle import install, uninstall
@@ -16,10 +19,21 @@ from bot.modules.registry import (
     add_entry,
     get_entry,
     list_installed,
+    migrate_bridge_rename,
     read_registry,
     remove_entry,
     write_registry,
 )
+
+
+def migrate_registry(data_path: Path) -> bool:
+    """Run all one-shot registry migrations. Returns True if any migration happened.
+
+    Currently includes:
+    - migrate_bridge_rename: renames 'bridge' → 'telegram-bridge' (D-8.5).
+    """
+    return migrate_bridge_rename(data_path)
+
 
 __all__ = [
     "ModuleManifest",
@@ -31,6 +45,8 @@ __all__ = [
     "get_entry",
     "add_entry",
     "remove_entry",
+    "migrate_bridge_rename",
+    "migrate_registry",
     "install",
     "uninstall",
     "assemble_claude_md",

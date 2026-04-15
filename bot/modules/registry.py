@@ -123,3 +123,50 @@ def remove_entry(hub_dir: Path, name: str) -> None:
     if len(reg["modules"]) == before:
         raise KeyError(f"module {name!r} not in registry")
     write_registry(hub_dir, reg)
+
+
+# ── One-shot migration (Phase 8 / D-8.5) ────────────────────────────────
+
+
+def _module_dir(data_path: Path, name: str) -> Path:
+    """Return the on-disk module directory path for a given module name."""
+    # Convention: modules live in <data_path>/../../modules/<name> relative to
+    # the hub knowledge dir, OR in the animaya repo root modules/<name> dir.
+    # For registry purposes, data_path is the hub_dir; on-disk module dirs live
+    # in the repo root modules/ tree, three levels up from bot/modules/registry.py.
+    _repo_root = Path(__file__).resolve().parent.parent.parent
+    return _repo_root / "modules" / name
+
+
+def migrate_bridge_rename(data_path: Path) -> bool:
+    """Rename registry entry 'bridge' -> 'telegram-bridge' and on-disk dir.
+
+    One-shot migration for Phase 8 cutover. Idempotent: subsequent calls are
+    no-ops after the first successful migration.
+
+    Args:
+        data_path: Root data directory (contains registry.json, i.e. hub_dir).
+
+    Returns:
+        True if migration was performed, False if nothing to migrate.
+    """
+    reg = read_registry(data_path)
+    migrated = False
+    for entry in reg.get("modules", []):
+        if entry.get("name") == "bridge":
+            entry["name"] = "telegram-bridge"
+            # Also set runtime_entry if missing (old entries predate the field).
+            entry.setdefault("runtime_entry", "bot.modules_runtime.telegram_bridge")
+            migrated = True
+
+    if migrated:
+        write_registry(data_path, reg)
+        # Rename on-disk dir if present.
+        old_dir = _module_dir(data_path, "bridge")
+        new_dir = _module_dir(data_path, "telegram-bridge")
+        if old_dir.exists() and not new_dir.exists():
+            old_dir.rename(new_dir)
+        logger.warning(
+            "Migrated module 'bridge' -> 'telegram-bridge' (registry + on-disk)"
+        )
+    return migrated

@@ -110,8 +110,8 @@ class TestIsolation:
         )
 
     def test_bridge_has_expected_shape(self) -> None:
-        """Phase 3 state: bridge ships manifest + 2 scripts + prompt, no Python."""
-        bridge = MODULES_ROOT / "bridge"
+        """Phase 8 state: telegram-bridge ships manifest + 2 scripts + prompt, no Python."""
+        bridge = MODULES_ROOT / "telegram-bridge"
         assert (bridge / "manifest.json").is_file()
         assert (bridge / "install.sh").is_file()
         assert (bridge / "uninstall.sh").is_file()
