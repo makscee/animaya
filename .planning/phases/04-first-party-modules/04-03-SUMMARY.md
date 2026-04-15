@@ -30,7 +30,7 @@ decisions:
 metrics:
   duration: ~15 minutes
   completed: 2026-04-15
-  tasks_completed: 3
+  tasks_completed: 4
   tasks_total: 4
   files_created: 7
   files_modified: 2
@@ -128,3 +128,21 @@ Commits verified:
 - `c9484b1` — feat(04-03): wire maybe_trigger_consolidation into telegram bridge
 
 ## Self-Check: PASSED
+
+## Task 4 — Human UAT result
+
+Smoke run via Telethon harness (`~/hub/telethon/tests/animaya_phase04_smoke.py`) against bot `@mks_test_assistant_bot` on animaya-dev LXC (VMID 205 on tower). Script drove 15 turns end-to-end (onboarding Q1→Q2→Q3 + identity injection probe + 10 chatter turns to trigger consolidation).
+
+**Verified 2026-04-15:**
+- IDEN-01: sentinel routing + Q1→Q2→Q3 state machine (required fix commit `c87a49b` — see "Deviations")
+- IDEN-02: USER.md/SOUL.md written to `/home/animaya/hub/knowledge/identity/`, sentinel cleared
+- IDEN-03: identity injection working — bot replied "You're Mak. Working on Voidnet and Animaya…"
+- MEMO-01 / MEMO-03: CORE.md populated with extracted facts; LXC log shows `consolidation: Added ruff Python linting config (line-length 100) to CORE.md`
+- MEMO-04: memory core injected into system prompt (bot referenced prior facts cross-turn)
+- GITV-01: 6 auto-commits captured in `git -C ~/hub log` within smoke window (test interval 30s; production default 300s restored after)
+
+## Deviations
+
+1. **Fix commit `c87a49b` (04-01 regression closure):** IDEN-01 as originally wired called `onboarding_start()` from the bridge MessageHandler when sentinel present, which sent Q1 text but never entered the `ConversationHandler` state machine. Every subsequent message re-triggered Q1. Fix adds a dedicated `MessageHandler` with `_SentinelPresent` filter as a ConversationHandler entry_point; bridge's ad-hoc sentinel branch removed. IDEN-01/02/04 pytest suite already green; gap was only visible under live PTB dispatch.
+
+2. **Deferred bug (pre-existing Phase 2 streaming, not Phase 4):** Telegram bot occasionally posts 2–3 bubbles per user message because mid-stream `editMessageText` 400 (HTML parse error) falls back to `sendMessage` (new bubble) instead of retrying the edit with `parse_mode=None` on the same bubble. Partial fix exists in `22fd978` but only covers `_finalize_stream`, not the streaming-edit path. All Phase 4 functionality still correct — cosmetic only. Tracked for a follow-up streaming-robustness phase.
