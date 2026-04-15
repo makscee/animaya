@@ -145,16 +145,28 @@ async def _onboarding_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return ConversationHandler.END
 
 
+class _SentinelPresent(filters.MessageFilter):
+    """Match any message while the identity onboarding sentinel file exists."""
+
+    def filter(self, message) -> bool:  # type: ignore[override]
+        return PENDING_SENTINEL.exists()
+
+
 def build_onboarding_handler() -> ConversationHandler:
     """ConversationHandler for /identity command + sentinel-triggered first message.
 
-    The bridge is responsible for routing the FIRST message after install into
-    onboarding_start when PENDING_SENTINEL.exists() — that wiring lives in
-    bot/bridge/telegram.py because it must intercept before _handle_message
-    dispatches to Claude.
+    Entry points:
+    - `/identity` command — explicit reconfigure (IDEN-04)
+    - First text message when `.pending-onboarding` sentinel exists (IDEN-01) —
+      this pulls the user INTO the conversation state machine so subsequent
+      messages route through the Q1/Q2/Q3 handlers instead of re-triggering Q1.
     """
+    sentinel_filter = _SentinelPresent() & filters.TEXT & ~filters.COMMAND
     return ConversationHandler(
-        entry_points=[CommandHandler("identity", onboarding_start)],
+        entry_points=[
+            CommandHandler("identity", onboarding_start),
+            MessageHandler(sentinel_filter, onboarding_start),
+        ],
         states={
             Q1_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, _onboarding_q1)],
             Q2_SOUL: [MessageHandler(filters.TEXT & ~filters.COMMAND, _onboarding_q2)],

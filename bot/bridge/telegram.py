@@ -26,11 +26,7 @@ from telegram.ext import (
 
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
 from bot.modules.registry import get_entry as _registry_get_entry
-from bot.modules_runtime.identity import (
-    PENDING_SENTINEL,
-    build_onboarding_handler,
-    onboarding_start,
-)
+from bot.modules_runtime.identity import build_onboarding_handler
 from bot.modules_runtime.memory import maybe_trigger_consolidation
 
 logger = logging.getLogger(__name__)
@@ -448,15 +444,11 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not _is_bot_addressed(update, context):
         return
 
-    # IDEN-01: route first message into onboarding when sentinel present.
-    # Sentinel is created by modules/identity/install.sh and removed by
-    # write_identity_files() at the end of onboarding Q&A.
-    if PENDING_SENTINEL.exists():
-        logger.info("identity sentinel present — routing to onboarding_start")
-        await onboarding_start(update, context)
-        # ConversationHandler picks up subsequent state messages because the
-        # ConversationHandler is registered ahead of this MessageHandler.
-        return
+    # IDEN-01 onboarding routing is owned by build_onboarding_handler() —
+    # its MessageHandler entry_point with `_SentinelPresent` filter captures
+    # the first text while `.pending-onboarding` exists and puts the user
+    # INTO the conversation state machine, so subsequent messages flow
+    # through Q1→Q2→Q3 instead of re-triggering Q1 here.
 
     user_id = update.effective_user.id
 
