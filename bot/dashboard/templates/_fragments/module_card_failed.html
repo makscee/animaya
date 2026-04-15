@@ -1,0 +1,31 @@
+<div class="card job-failed">
+  <h3 style="margin:0 0 .5rem;font-size:1rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim)">{{ card.name if card else job.module }}</h3>
+  <div class="error">
+    {{ "Install" if job.op == "install" else "Uninstall" }} failed: {{ job.module }}
+    {% if job.rollback %}
+      {% if job.rollback == "clean" %}
+        <span class="badge-green" style="margin-left:.5rem">rollback: clean</span>
+      {% elif job.rollback == "dirty" %}
+        <span class="badge-red" style="margin-left:.5rem">rollback: dirty — {{ job.leaked_paths | length }} paths leaked</span>
+      {% else %}
+        <span class="badge-gray" style="margin-left:.5rem">rollback: {{ job.rollback }}</span>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% if job.error %}<p class="field-help"><strong>Error:</strong> {{ job.error }}</p>{% endif %}
+  {% if job.rollback == "dirty" and job.leaked_paths %}
+    <p class="field-help"><strong>Leaked paths:</strong> {{ job.leaked_paths | join(", ") }}</p>
+  {% endif %}
+  <details>
+    <summary>Log (last {{ log_tail | length }} lines)</summary>
+    <pre style="overflow:auto;max-height:20rem;background:var(--bg-base);padding:.5rem;border-radius:4px">{% for line in log_tail %}{{ line }}
+{% endfor %}</pre>
+  </details>
+  <div style="display:flex;gap:.5rem;margin-top:.75rem">
+    <button class="btn"
+            hx-post="/modules/{{ job.module }}/{{ job.op }}"
+            hx-target="closest .card"
+            hx-swap="outerHTML">Retry</button>
+    <a class="btn" href="/modules">Back</a>
+  </div>
+</div>

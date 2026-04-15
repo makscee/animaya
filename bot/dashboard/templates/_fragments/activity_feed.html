@@ -1,0 +1,23 @@
+<div id="activity-feed"
+     hx-get="/fragments/activity"
+     hx-trigger="every 5s"
+     hx-swap="outerHTML"
+     role="list"
+     aria-live="polite">
+  {% if events %}
+    {% for ev in events %}
+      <div class="activity-item" role="listitem">
+        <span class="dot dot-{{ 'warn' if ev.level == 'warn' else ('red' if ev.level == 'error' else 'gray') }}"
+              aria-hidden="true"></span>
+        <span class="event-source badge-gray">{{ ev.source }}</span>
+        <span class="event-msg">{{ ev.message }}</span>
+        <span class="event-ts" title="{{ ev.ts }}">{{ ev.ts | relative_time }}</span>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="field-help">
+      <strong>No activity yet</strong><br>
+      Events appear here once the bot receives messages or you install a module.
+    </div>
+  {% endif %}
+</div>
