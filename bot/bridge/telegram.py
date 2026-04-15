@@ -25,6 +25,11 @@ from telegram.ext import (
 )
 
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
+from bot.modules_runtime.identity import (
+    PENDING_SENTINEL,
+    build_onboarding_handler,
+    onboarding_start,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -441,6 +446,16 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not _is_bot_addressed(update, context):
         return
 
+    # IDEN-01: route first message into onboarding when sentinel present.
+    # Sentinel is created by modules/identity/install.sh and removed by
+    # write_identity_files() at the end of onboarding Q&A.
+    if PENDING_SENTINEL.exists():
+        logger.info("identity sentinel present — routing to onboarding_start")
+        await onboarding_start(update, context)
+        # ConversationHandler picks up subsequent state messages because the
+        # ConversationHandler is registered ahead of this MessageHandler.
+        return
+
     user_id = update.effective_user.id
 
     async def inner(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -515,6 +530,7 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             try:
                 from claude_code_sdk import query
                 from claude_code_sdk.types import AssistantMessage, TextBlock, ToolUseBlock
+
                 from bot.claude_query import build_options
 
                 options = build_options(
@@ -569,6 +585,10 @@ def build_app(token: str) -> Application:
         logger.info("Using Telegram proxy: %s", proxy_url)
     app = builder.build()
     app.add_handler(CommandHandler("start", _handle_start))
+    # IDEN-04: /identity reconfigure ConversationHandler MUST be registered
+    # BEFORE the catch-all MessageHandler so /identity is routed correctly
+    # and Q&A state messages stay inside the conversation (Pitfall 8).
+    app.add_handler(build_onboarding_handler())
     app.add_handler(
         MessageHandler(
             (filters.TEXT | filters.VOICE | filters.AUDIO | filters.PHOTO | filters.Document.ALL)

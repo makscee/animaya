@@ -5,8 +5,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from bot.modules_runtime import identity as iden_rt
 
 
