@@ -8,6 +8,16 @@ A modular AI assistant platform that installs on top of a Claude Box (LXC with C
 
 Any user can spin up a personal AI assistant by installing Animaya on their Claude Box, then customize it module-by-module — each module is self-contained, configurable, and reversible.
 
+## Current Milestone: v2.0 Onboarding Polish & Bridge-as-Module
+
+**Goal:** Make first-run experience complete — Telegram bridge becomes installable module with in-dashboard onboarding, identity pre-installed, dashboard gains chat + Hub file tree.
+
+**Target features:**
+- Bridge-as-module with token install dialog + 6-digit pairing code owner-claim
+- Bridge settings: master disable, non-owner access (sender flagged in prompt), tool-use display (temporary default)
+- Identity module pre-installed; config page shows/edits identity file contents
+- Dashboard chat + Hub file tree page (full `~/hub/` visibility, chat shows tool use inline)
+
 ## Requirements
 
 ### Validated
@@ -25,7 +35,7 @@ All v1.0 requirements satisfied as of 2026-04-15 (milestone v1.0 — Audit Gaps)
 
 ### Active
 
-(None — planning next milestone)
+v2.0 requirements TBD (see REQUIREMENTS.md after requirements step).
 
 ### Out of Scope
 
@@ -84,4 +94,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after milestone v1.0 completion*
+*Last updated: 2026-04-15 — v2.0 milestone started (Onboarding Polish & Bridge-as-Module)*

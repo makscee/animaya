@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Audit Gaps
-status: milestone_complete
-stopped_at: milestone v1.0 archived
+milestone: v2.0
+milestone_name: Onboarding Polish & Bridge-as-Module
+status: defining_requirements
+stopped_at: ""
 last_updated: "2026-04-15T00:00:00.000Z"
-last_activity: 2026-04-15 -- milestone v1.0 complete, archived, tagged v1.0
+last_activity: 2026-04-15 -- milestone v2.0 started
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,11 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 
 ## Current Position
 
-Phase: — (milestone complete)
-Status: milestone_complete
-Last activity: 2026-04-15 -- milestone v1.0 archived, git tag v1.0 created
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-15 — Milestone v2.0 started
 
-Progress: [██████████] 100%
+Progress: [          ] 0%
 
 ## Milestone v1.0 Summary
 
@@ -86,5 +87,5 @@ None — clean milestone complete.
 ## Session Continuity
 
 Last session: 2026-04-15
-Stopped at: milestone v1.0 complete
-Resume: run `/gsd-new-milestone` to start next milestone
+Stopped at: v2.0 requirements step
+Resume: continue `/gsd-new-milestone` or run `/gsd-plan-phase [N]` after roadmap
