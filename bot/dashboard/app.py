@@ -1,18 +1,15 @@
-"""FastAPI app factory for the Animaya web dashboard (Phase 5).
+"""FastAPI app factory for the Animaya web dashboard.
 
 Exposes ``build_app(hub_dir)`` returning a configured FastAPI instance with
-``/``, ``/login``, ``/auth/telegram``, ``/logout`` and ``/static/*`` mounted.
+``/``, ``/login``, ``/logout`` and ``/static/*`` mounted.
 
-Home (``/``) is owned by Plan 05-04 (home routes), ``/modules`` by Plan 05-05,
-and config endpoints by Plan 05-06 — each registered via try/except ImportError
-guards so the shell stays usable in isolation. The placeholder ``/`` route here
-is overwritten when ``bot.dashboard.home_routes`` becomes available.
-
-Module-level ``templates`` is exported for downstream plans to render fragments
-without rebuilding the Jinja2Templates instance.
+Auth: token-based via ``DASHBOARD_TOKEN`` env var. ``GET /login?token=<value>``
+issues a session cookie for the first ID in ``TELEGRAM_OWNER_ID`` and redirects
+to ``/``.
 """
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import time
@@ -25,10 +22,9 @@ from fastapi.templating import Jinja2Templates
 
 from bot.dashboard.auth import (
     SESSION_COOKIE_NAME,
-    SESSION_MAX_AGE_SECONDS,
     clear_session_cookie_kwargs,
     issue_session_cookie,
-    verify_telegram_payload,
+    set_session_cookie_kwargs,
 )
 from bot.dashboard.deps import _owner_ids, require_owner
 
@@ -67,67 +63,41 @@ def build_app(hub_dir: Path) -> FastAPI:
     return app
 
 
-# ── Auth routes (login / callback / logout) ──────────────────────────
+# ── Auth routes (token login / logout) ────────────────────────────────
 def _register_auth_routes(app: FastAPI) -> None:
-    @app.get("/login", response_class=HTMLResponse)
-    async def login(request: Request, error: str | None = None) -> HTMLResponse:
-        bot_username = os.environ.get("TELEGRAM_BOT_USERNAME", "").strip()
-        # If env var is missing, override the error message so users see the
-        # canonical "misconfigured" copy regardless of any ?error= query.
-        effective_error = error if bot_username else "misconfigured"
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {
-                "bot_username": bot_username,
-                "error": effective_error,
-            },
-        )
+    @app.get("/login", response_class=HTMLResponse, response_model=None)
+    async def login(
+        request: Request,
+        token: str | None = None,
+        error: str | None = None,
+    ) -> HTMLResponse | RedirectResponse:
+        expected = os.environ.get("DASHBOARD_TOKEN", "")
+        owners = sorted(_owner_ids())
 
-    @app.post("/auth/telegram")
-    async def auth_telegram(request: Request) -> RedirectResponse:
-        form = await request.form()
-        # form.multi_items() returns list[tuple[str, str|UploadFile]]; cast to str.
-        payload: dict[str, str] = {k: str(v) for k, v in form.multi_items()}
-        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        if not verify_telegram_payload(payload, bot_token):
-            # Distinguish stale (auth_date too old) vs invalid (HMAC mismatch).
-            try:
-                age = int(time.time()) - int(payload.get("auth_date", 0))
-            except (TypeError, ValueError):
-                age = 0
-            reason = "stale" if age > 86400 else "invalid"
-            return RedirectResponse(f"/login?error={reason}", status_code=303)
+        if token is not None:
+            if not expected:
+                return templates.TemplateResponse(
+                    request, "login.html", {"error": "misconfigured"}, status_code=500
+                )
+            if not owners:
+                return templates.TemplateResponse(
+                    request, "login.html", {"error": "misconfigured"}, status_code=500
+                )
+            if not hmac.compare_digest(token, expected):
+                return templates.TemplateResponse(
+                    request, "login.html", {"error": "invalid"}, status_code=401
+                )
 
-        try:
-            user_id = int(payload["id"])
-        except (KeyError, TypeError, ValueError):
-            return RedirectResponse("/login?error=invalid", status_code=303)
+            cookie = issue_session_cookie(user_id=owners[0], auth_date=int(time.time()))
+            response = RedirectResponse("/", status_code=303)
+            response.set_cookie(
+                key=SESSION_COOKIE_NAME,
+                value=cookie,
+                **set_session_cookie_kwargs(),
+            )
+            return response
 
-        if user_id not in _owner_ids():
-            return RedirectResponse("/login?error=forbidden", status_code=303)
-
-        try:
-            auth_date = int(payload.get("auth_date", time.time()))
-        except (TypeError, ValueError):
-            auth_date = int(time.time())
-
-        cookie = issue_session_cookie(
-            user_id=user_id,
-            auth_date=auth_date,
-            hash_=payload.get("hash", ""),
-        )
-        response = RedirectResponse("/", status_code=303)
-        response.set_cookie(
-            key=SESSION_COOKIE_NAME,
-            value=cookie,
-            max_age=SESSION_MAX_AGE_SECONDS,
-            httponly=True,
-            samesite="lax",
-            secure=True,
-            path="/",
-        )
-        return response
+        return templates.TemplateResponse(request, "login.html", {"error": error})
 
     @app.get("/logout")
     async def logout() -> RedirectResponse:

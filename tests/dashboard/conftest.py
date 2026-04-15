@@ -71,11 +71,20 @@ def events_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture
+def dashboard_token(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Set DASHBOARD_TOKEN to a known test value."""
+    token = "test-dashboard-token-abc123"
+    monkeypatch.setenv("DASHBOARD_TOKEN", token)
+    return token
+
+
+@pytest.fixture
 def client(
     temp_hub_dir: Path,
     session_secret: str,  # noqa: ARG001
     owner_id: int,  # noqa: ARG001
     bot_token: str,  # noqa: ARG001
+    dashboard_token: str,  # noqa: ARG001
     events_log: Path,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[Any]:

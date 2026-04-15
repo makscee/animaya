@@ -1,83 +1,74 @@
-"""Login page + Telegram auth callback tests (Plan 05-03)."""
-from __future__ import annotations
+"""Login flow tests — token-based auth (DASHBOARD_TOKEN).
 
-import time
+Telegram Login Widget flow is removed. Tests cover:
+- GET /login without token renders login template
+- GET /login?token=correct -> 303 to / with session cookie
+- GET /login?token=wrong -> 401 with error=invalid
+- GET /login when DASHBOARD_TOKEN unset -> 500 with error=misconfigured
+- GET /logout clears cookie and redirects to /login
+"""
+from __future__ import annotations
 
 import pytest
 
 from bot.dashboard.auth import SESSION_COOKIE_NAME
-from tests.dashboard._helpers import _signed_payload
 
 
 @pytest.fixture
-def bot_username(monkeypatch: pytest.MonkeyPatch) -> str:
-    monkeypatch.setenv("TELEGRAM_BOT_USERNAME", "animaya_test_bot")
-    return "animaya_test_bot"
+def dashboard_token(monkeypatch: pytest.MonkeyPatch) -> str:
+    token = "test-dashboard-token-abc123"
+    monkeypatch.setenv("DASHBOARD_TOKEN", token)
+    return token
 
 
-def test_login_page_renders(client, bot_username: str) -> None:
+def test_login_page_renders_without_token(client, dashboard_token: str) -> None:
     r = client.get("/login")
     assert r.status_code == 200
-    assert "telegram-widget.js" in r.text
     assert "Animaya" in r.text
 
 
-def test_login_page_uses_bot_username_env(
-    client, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("TELEGRAM_BOT_USERNAME", "foo_bot")
+def test_login_page_no_error_by_default(client, dashboard_token: str) -> None:
     r = client.get("/login")
     assert r.status_code == 200
-    assert 'data-telegram-login="foo_bot"' in r.text
+    # No error message when no token provided
+    assert "misconfigured" not in r.text.lower()
+    assert "invalid" not in r.text.lower()
 
 
-def test_login_page_missing_bot_username_shows_error(
-    client, monkeypatch: pytest.MonkeyPatch
+def test_login_correct_token_redirects_and_sets_cookie(
+    client, dashboard_token: str, owner_id: int
 ) -> None:
-    monkeypatch.delenv("TELEGRAM_BOT_USERNAME", raising=False)
-    r = client.get("/login")
-    assert r.status_code == 200
-    assert "misconfigured" in r.text.lower()
-
-
-def test_auth_callback_valid_sets_cookie_and_redirects(
-    client, bot_token: str, owner_id: int
-) -> None:
-    payload = _signed_payload(bot_token, id_=owner_id)
-    r = client.post("/auth/telegram", data=payload)
-    assert r.status_code in (302, 303, 307)
+    r = client.get("/login", params={"token": dashboard_token})
+    assert r.status_code == 303
     assert r.headers.get("location") == "/"
     set_cookie = r.headers.get("set-cookie", "")
     assert SESSION_COOKIE_NAME in set_cookie
     low = set_cookie.lower()
     assert "httponly" in low
     assert "samesite=lax" in low
-    assert "secure" in low
 
 
-def test_auth_callback_invalid_hash_rejected(
-    client, bot_token: str, owner_id: int
+def test_login_wrong_token_returns_401(
+    client, dashboard_token: str, owner_id: int
 ) -> None:
-    payload = _signed_payload(bot_token, id_=owner_id)
-    # Mutate id AFTER signing — hash becomes invalid.
-    payload["id"] = str(int(payload["id"]) + 1)
-    r = client.post("/auth/telegram", data=payload)
-    assert r.status_code in (302, 303, 307)
-    assert r.headers.get("location") == "/login?error=invalid"
+    r = client.get("/login", params={"token": "wrong-token"})
+    assert r.status_code == 401
+    assert "invalid" in r.text.lower()
 
 
-def test_auth_callback_non_owner_rejected(client, bot_token: str) -> None:
-    payload = _signed_payload(bot_token, id_=999888777)
-    r = client.post("/auth/telegram", data=payload)
-    assert r.status_code in (302, 303, 307)
-    assert r.headers.get("location") == "/login?error=forbidden"
-
-
-def test_auth_callback_stale_rejected(
-    client, bot_token: str, owner_id: int
+def test_login_missing_dashboard_token_env_returns_500(
+    client, monkeypatch: pytest.MonkeyPatch, owner_id: int
 ) -> None:
-    stale_auth_date = int(time.time()) - 200_000  # > 24 h
-    payload = _signed_payload(bot_token, id_=owner_id, auth_date=stale_auth_date)
-    r = client.post("/auth/telegram", data=payload)
-    assert r.status_code in (302, 303, 307)
-    assert r.headers.get("location") == "/login?error=stale"
+    monkeypatch.delenv("DASHBOARD_TOKEN", raising=False)
+    r = client.get("/login", params={"token": "any-token"})
+    assert r.status_code == 500
+    assert "misconfigured" in r.text.lower()
+
+
+def test_logout_clears_cookie_and_redirects(client, dashboard_token: str) -> None:
+    r = client.get("/logout")
+    assert r.status_code == 303
+    assert r.headers.get("location") == "/login"
+    set_cookie = r.headers.get("set-cookie", "")
+    # Cookie should be cleared (max-age=0 or expires in the past)
+    assert SESSION_COOKIE_NAME in set_cookie

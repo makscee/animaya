@@ -17,11 +17,11 @@ from bot.main import DEFAULT_DATA_PATH, REQUIRED_ENV_VARS, assemble_claude_md, m
 
 
 def _set_phase5_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set the three Phase-5 required env vars (SESSION_SECRET,
-    TELEGRAM_OWNER_ID, TELEGRAM_BOT_USERNAME) so main() passes its env-gate."""
+    """Set the Phase-5 required env vars (SESSION_SECRET,
+    TELEGRAM_OWNER_ID, DASHBOARD_TOKEN) so main() passes its env-gate."""
     monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
     monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
-    monkeypatch.setenv("TELEGRAM_BOT_USERNAME", "test_bot")
+    monkeypatch.setenv("DASHBOARD_TOKEN", "test-dashboard-token")
 
 
 class TestEnvValidation:
