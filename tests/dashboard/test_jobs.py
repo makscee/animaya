@@ -192,10 +192,10 @@ async def test_get_job_returns_None_after_eviction(
     from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
 
     mdir = _seed_module(modules_root, "ev")
-    jobs_mod._set_retention_for_tests(timedelta(seconds=0))
     job = await jobs_mod.start_install("ev", mdir, temp_hub_dir)
     await _wait_for_status(jobs_mod, job.id, {"done", "failed"})
-    # After finish, next get_job -> _gc triggers eviction (retention = 0).
+    # Shorten retention AFTER the job finished so _gc evicts on next access.
+    jobs_mod._set_retention_for_tests(timedelta(seconds=0))
     assert jobs_mod.get_job(job.id) is None
 
 
