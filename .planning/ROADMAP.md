@@ -66,7 +66,11 @@ Plans:
   3. Pairing attempts are limited to 5 before the code window closes, compared with `hmac.compare_digest`, and expire after 10 minutes; expired/exhausted codes require regeneration.
   4. Owner can revoke ownership from the dashboard; the module returns to pending-claim state and the next pairing-code cycle rebinds a (possibly different) owner.
   5. Bot token is never returned by `GET /api/modules` (only `has_token: bool`) and never appears in any log line — verified by grepping logs after a full install + claim + uninstall cycle; `TELEGRAM_OWNER_ID` env gate is removed from the codebase.
-**Plans:** TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 09-01-PLAN.md — Phase 8 fixes, bridge state module, token install endpoint with getMe validation, token redaction
+- [ ] 09-02-PLAN.md — Pairing code FSM (HMAC generation/verification), HTMX polling templates, bridge claim handler
+- [ ] 09-03-PLAN.md — Auth migration (TELEGRAM_OWNER_ID removal), revoke endpoint, test fixture migration, human verification
 
 #### Phase 10: Bridge Settings, Non-Owner Access & Tool-Use Display
 **Goal:** Owner controls runtime bridge behaviour — kill switch, how strangers are treated, and how tool-use is surfaced in Telegram — all from one settings page.
@@ -110,7 +114,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Bridge Extraction & Supervisor Cutover | 0/3 | Planned | - |
-| 9. Install Dialog & Owner-Claim FSM | 0/0 | Not started | - |
+| 9. Install Dialog & Owner-Claim FSM | 0/3 | Planned | - |
 | 10. Bridge Settings, Non-Owner Access & Tool-Use Display | 0/0 | Not started | - |
 | 11. Identity Pre-Install & File-Content Editor | 0/0 | Not started | - |
 | 12. Dashboard SSE Chat & Hub File Tree | 0/0 | Not started | - |
