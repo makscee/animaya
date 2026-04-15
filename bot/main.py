@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 
 from bot.modules.assembler import assemble_claude_md
+from bot.modules.registry import get_entry
+from bot.modules_runtime.git_versioning import HUB_ROOT, commit_loop
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,8 +46,29 @@ def main() -> None:
     # run_polling() is sync — it creates and manages its own event loop
     from bot.bridge.telegram import build_app  # noqa: PLC0415
 
+    async def _post_init(application) -> None:
+        """Spawn module-owned background tasks (runs inside the event loop)."""
+        entry = get_entry(data_path, "git-versioning")
+        if entry is None:
+            logger.info("git-versioning not installed; skipping commit loop")
+            return
+        interval = (
+            entry.get("config", {}).get("interval_seconds")
+            if isinstance(entry.get("config"), dict)
+            else None
+        ) or 300
+        application.create_task(
+            commit_loop(interval=interval, repo_root=HUB_ROOT),
+            name="git-autocommit",
+        )
+        logger.info(
+            "git-versioning commit loop scheduled (interval=%ds, repo=%s)",
+            interval,
+            HUB_ROOT,
+        )
+
     token = os.environ["TELEGRAM_BOT_TOKEN"]
-    app = build_app(token)
+    app = build_app(token, post_init=_post_init)
     logger.info("Telegram polling started")
     app.run_polling()
 

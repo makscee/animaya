@@ -577,12 +577,17 @@ async def _error_handler(update, context):
     logger.warning("Telegram error: %s", context.error)
 
 
-def build_app(token: str) -> Application:
+def build_app(
+    token: str,
+    post_init: object | None = None,
+) -> Application:
     proxy_url = os.environ.get("TELEGRAM_PROXY")
     builder = Application.builder().token(token)
     if proxy_url:
         builder = builder.proxy(proxy_url).get_updates_proxy(proxy_url)
         logger.info("Using Telegram proxy: %s", proxy_url)
+    if post_init is not None:
+        builder = builder.post_init(post_init)
     app = builder.build()
     app.add_handler(CommandHandler("start", _handle_start))
     # IDEN-04: /identity reconfigure ConversationHandler MUST be registered
