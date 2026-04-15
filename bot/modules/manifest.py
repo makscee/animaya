@@ -7,11 +7,17 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
+
+# ── Runtime entry namespace guard (T-08-02) ──────────────────────────
+# Only bot.* dotted paths allowed — prevents arbitrary module injection
+# if a manifest is ever user-supplied.
+_RUNTIME_ENTRY_PATTERN = re.compile(r"^bot\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
 
 # ── Schema ──────────────────────────────────────────────────────────
 # Loose semver prefix: major.minor.patch with optional pre-release/build suffix.
@@ -67,6 +73,24 @@ class ModuleManifest(BaseModel):
     config_schema: dict | None = Field(
         default=None, description="JSON Schema passthrough for Phase 5"
     )
+    runtime_entry: str | None = Field(
+        default=None,
+        description="Dotted Python module path (bot.*) whose module-level "
+                    "on_start/on_stop callables the supervisor invokes.",
+    )
+
+    @field_validator("runtime_entry")
+    @classmethod
+    def _validate_runtime_entry(cls, v: str | None) -> str | None:
+        """Reject paths outside the bot.* namespace (T-08-02)."""
+        if v is None:
+            return v
+        if not _RUNTIME_ENTRY_PATTERN.match(v):
+            raise ValueError(
+                f"runtime_entry {v!r} must match pattern "
+                f"{_RUNTIME_ENTRY_PATTERN.pattern} (only bot.* namespace allowed)"
+            )
+        return v
 
 
 # ── Loader ──────────────────────────────────────────────────────────

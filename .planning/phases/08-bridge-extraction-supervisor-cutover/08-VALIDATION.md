@@ -38,6 +38,10 @@ created: 2026-04-15
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
+| T1-P01 | 01 | 1 | BRDG-01 | T-08-02 (runtime_entry injection) | Validated dotted bot.* path; rejects os.system | unit | pytest tests/modules/test_bridge_module.py -x | ✅ | ✅ |
+| T2-P01 | 01 | 1 | BRDG-01 | T-08-03 (errored module blocks boot) | Exception isolation per module | unit | pytest tests/modules/test_supervisor.py -x | ✅ | ✅ |
+| T3a-P01 | 01 | 1 | BRDG-03 | T-08-04 (zombie polling) | on_stop order assertions; uninstall wiring | unit (xfail P02) | pytest tests/modules/test_supervisor_cutover.py -x | ✅ | ⬜ |
+| T3b-P01 | 01 | 1 | BRDG-04 | T-08-01 (token in logs) | Token not in REQUIRED_ENV_VARS; config.json canonical | unit (xfail P03) | pytest tests/modules/test_bridge_config_source.py -x | ✅ | ⬜ |
 
 *Populated by planner. Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
