@@ -25,11 +25,13 @@ from telegram.ext import (
 )
 
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
+from bot.modules.registry import get_entry as _registry_get_entry
 from bot.modules_runtime.identity import (
     PENDING_SENTINEL,
     build_onboarding_handler,
     onboarding_start,
 )
+from bot.modules_runtime.memory import maybe_trigger_consolidation
 
 logger = logging.getLogger(__name__)
 
@@ -557,6 +559,28 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     _stats["messages_sent"] += 1
                     await _finalize_stream(state, accumulated, update)
                     await _send_referenced_files(accumulated, update)
+                    # MEMO-03: post-reply consolidation trigger (fire-and-forget).
+                    # Gated on memory module being installed; cadence + model from registry config.
+                    try:
+                        mem_entry = _registry_get_entry(data_dir, "memory")
+                    except Exception:
+                        mem_entry = None
+                    if mem_entry is not None:
+                        cfg = (
+                            mem_entry.get("config", {})
+                            if isinstance(mem_entry.get("config"), dict)
+                            else {}
+                        )
+                        every_n = int(cfg.get("consolidation_every_n_turns", 10))
+                        cons_model = cfg.get("consolidation_model", "claude-haiku-4-5")
+                        max_lines = int(cfg.get("core_max_lines", 150))
+                        maybe_trigger_consolidation(
+                            chat_data=context.chat_data,
+                            conversation_text=f"USER: {text}\n\nASSISTANT: {accumulated}",
+                            every_n_turns=every_n,
+                            model=cons_model,
+                            max_lines=max_lines,
+                        )
                 else:
                     await _delete_status(state["status_msg"])
 
