@@ -81,10 +81,10 @@ Plans:
   4. User reconfigures identity via the `/identity` Telegram command without reinstalling the module; new identity is reflected immediately. (Dashboard reconfigure variant is Phase 5 scope per D-04.)
 **Plans:** 4 plans
 Plans:
-- [ ] 04-00-PLAN.md — Wave 0: test infrastructure, Phase 4 fixtures, lock assumptions A1/A2/A7
-- [ ] 04-01-PLAN.md — Identity module: lifecycle, runtime, query-time injection, /identity ConversationHandler
-- [ ] 04-02-PLAN.md — Git-versioning module: asyncio commit loop, in-process Lock, post_init wiring
-- [ ] 04-03-PLAN.md — Memory module: Haiku consolidation, post-reply trigger, end-to-end smoke
+- [x] 04-00-PLAN.md — Wave 0: test infrastructure, Phase 4 fixtures, lock assumptions A1/A2/A7
+- [x] 04-01-PLAN.md — Identity module: lifecycle, runtime, query-time injection, /identity ConversationHandler
+- [x] 04-02-PLAN.md — Git-versioning module: asyncio commit loop, in-process Lock, post_init wiring
+- [x] 04-03-PLAN.md — Memory module: Haiku consolidation, post-reply trigger, end-to-end smoke
 **UI hint**: yes
 
 ### Phase 5: Web Dashboard
