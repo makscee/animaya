@@ -1,0 +1,40 @@
+<div class="field">
+  {% if field.kind == "boolean" %}
+    <label>
+      <input type="checkbox" id="cfg-{{ field.name }}" name="{{ field.name }}"
+             {% if field.value %}checked{% endif %}>
+      {{ field.label }}
+    </label>
+  {% elif field.kind == "select" %}
+    <label for="cfg-{{ field.name }}">{{ field.label }}</label>
+    <select id="cfg-{{ field.name }}" name="{{ field.name }}">
+      {% for opt in field.enum %}
+        <option value="{{ opt }}"{% if field.value == opt %} selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+  {% elif field.kind == "integer" %}
+    <label for="cfg-{{ field.name }}">{{ field.label }}</label>
+    <input type="number" step="1" id="cfg-{{ field.name }}" name="{{ field.name }}"
+           value="{{ field.value }}"
+           {% if field.min is not none %}min="{{ field.min }}"{% endif %}
+           {% if field.max is not none %}max="{{ field.max }}"{% endif %}>
+  {% elif field.kind == "number" %}
+    <label for="cfg-{{ field.name }}">{{ field.label }}</label>
+    <input type="number" step="any" id="cfg-{{ field.name }}" name="{{ field.name }}"
+           value="{{ field.value }}"
+           {% if field.min is not none %}min="{{ field.min }}"{% endif %}
+           {% if field.max is not none %}max="{{ field.max }}"{% endif %}>
+  {% elif field.kind == "string" %}
+    <label for="cfg-{{ field.name }}">{{ field.label }}</label>
+    <input type="text" id="cfg-{{ field.name }}" name="{{ field.name }}"
+           value="{{ field.value }}"
+           {% if field.min_length is not none %}minlength="{{ field.min_length }}"{% endif %}
+           {% if field.max_length is not none %}maxlength="{{ field.max_length }}"{% endif %}>
+  {% else %}
+    <div class="error">{{ field.notice }}</div>
+  {% endif %}
+  {% if field.help %}<small class="field-help">{{ field.help }}</small>{% endif %}
+  {% if field_errors.get(field.name) %}
+    <small class="field-error">{{ field_errors[field.name] }}</small>
+  {% endif %}
+</div>

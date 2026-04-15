@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from bot.dashboard.deps import require_owner
+from bot.dashboard.forms import coerce, render_fields, save_config, validate
 from bot.dashboard.jobs import (
     InProgressError,
     get_job,
@@ -26,6 +27,8 @@ from bot.dashboard.jobs import (
     start_uninstall,
 )
 from bot.dashboard.modules_view import all_cards, describe, module_dir_for
+from bot.modules import get_entry
+from bot.modules.manifest import validate_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +132,97 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:
             request,
             "_fragments/module_card_running.html",
             {"card": card, "job": job},
+        )
+
+    @app.get(
+        "/modules/{name}/config",
+        response_class=HTMLResponse,
+        name="module_config",
+    )
+    async def config_get(
+        name: str,
+        request: Request,
+        _uid: int = Depends(require_owner),
+    ):
+        entry = get_entry(hub_dir, name)
+        if entry is None:
+            raise HTTPException(
+                status_code=404, detail=f"module {name!r} not installed",
+            )
+        manifest = validate_manifest(module_dir_for(name))
+        schema = manifest.config_schema
+        if not schema or not schema.get("properties"):
+            return templates.TemplateResponse(
+                request,
+                "_fragments/config_form_saved.html",
+                {
+                    "name": name,
+                    "fields": [],
+                    "no_schema": True,
+                },
+            )
+        fields = render_fields(schema, entry.get("config") or {})
+        return templates.TemplateResponse(
+            request,
+            "_fragments/config_form.html",
+            {
+                "name": name,
+                "fields": fields,
+                "field_errors": {},
+                "summary_error": None,
+            },
+        )
+
+    @app.post(
+        "/modules/{name}/config",
+        response_class=HTMLResponse,
+        name="module_config_save",
+    )
+    async def config_post(
+        name: str,
+        request: Request,
+        _uid: int = Depends(require_owner),
+    ):
+        entry = get_entry(hub_dir, name)
+        if entry is None:
+            raise HTTPException(
+                status_code=404, detail=f"module {name!r} not installed",
+            )
+        manifest = validate_manifest(module_dir_for(name))
+        schema = manifest.config_schema or {}
+        form = await request.form()
+        form_data = {k: str(v) for k, v in form.multi_items()}
+        payload, coerce_errors = coerce(form_data, schema)
+        schema_errors = validate(payload, schema) if not coerce_errors else {}
+        errors = {**coerce_errors, **schema_errors}
+        if errors:
+            fields = render_fields(
+                schema, {**(entry.get("config") or {}), **payload},
+            )
+            return templates.TemplateResponse(
+                request,
+                "_fragments/config_form.html",
+                {
+                    "name": name,
+                    "fields": fields,
+                    "field_errors": errors,
+                    "summary_error": (
+                        f"Please fix {len(errors)} errors below."
+                    ),
+                },
+            )
+        save_config(hub_dir, name, payload)
+        fresh = get_entry(hub_dir, name) or entry
+        fields = render_fields(schema, fresh.get("config") or {})
+        return templates.TemplateResponse(
+            request,
+            "_fragments/config_form_saved.html",
+            {
+                "name": name,
+                "fields": fields,
+                "field_errors": {},
+                "summary_error": None,
+            },
         )
 
     @app.get(

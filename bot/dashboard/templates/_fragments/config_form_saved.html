@@ -1,0 +1,10 @@
+<div id="config-form">
+  {% if no_schema %}
+    <p class="field-help">This module has no configuration.</p>
+  {% else %}
+    <div class="success">Saved. CLAUDE.md rebuilt.</div>
+    {% with field_errors = {}, summary_error = None %}
+      {% include "_fragments/config_form.html" %}
+    {% endwith %}
+  {% endif %}
+</div>

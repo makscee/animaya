@@ -30,10 +30,17 @@
   {% endif %}
 
   <h3 style="font-size:1rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);margin-top:1rem">Configuration</h3>
-  {% if card.has_config %}
-    <p class="field-help">This module declares a <code>config_schema</code>. Config form placeholder — see Plan 05-06.</p>
+  {% if card.has_config and card.installed %}
+    <div id="config-section"
+         hx-get="/modules/{{ card.name }}/config"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <p class="field-help">Loading configuration form…</p>
+    </div>
+  {% elif card.has_config and not card.installed %}
+    <p class="field-help">Install this module to configure it.</p>
   {% else %}
-    <p class="field-help">Nothing to configure — install/uninstall it from the Modules page.</p>
+    <p class="field-help">This module has no configuration.</p>
   {% endif %}
 
   <div style="display:flex;gap:.5rem;margin-top:1rem">
