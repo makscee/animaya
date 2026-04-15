@@ -12,19 +12,20 @@ Any user can spin up a personal AI assistant by installing Animaya on their Clau
 
 ### Validated
 
-(None yet — fresh start, old Docker-based code is reference only)
+All v1.0 requirements satisfied as of 2026-04-15 (milestone v1.0 — Audit Gaps):
+
+- **INST-01..04** (Phase 1): Install script + systemd service on Claude Box
+- **TELE-01..05** (Phase 2): Streaming Telegram bridge with async safety
+- **MODS-01..06** (Phase 3): Module system — manifest, registry, lifecycle, assembler, isolation
+- **IDEN-01..04** (Phase 4): Identity module — onboarding, Hub storage, system prompt injection, reconfigure
+- **MEMO-01..04** (Phase 4): Memory module — Hub markdown, git versioning, Haiku consolidation, context injection
+- **GITV-01..03** (Phase 4): Git versioning module — asyncio commit loop, single-committer, scoped commits
+- **DASH-01..06** (Phase 5): Web dashboard — FastAPI+HTMX, Telegram Login Widget, status, modules UI, config forms
+- **TEST-01..03** (Phase 6): Telethon test harness — session persistence, driver API, smoke test
 
 ### Active
 
-- [ ] Telegram bridge connects to Claude Code and streams responses
-- [ ] Web dashboard for bot management and module installation
-- [ ] Module system with folder + manifest pattern (install/uninstall/configure)
-- [ ] Identity module: onboarding flow (who is the user, who is the assistant)
-- [ ] Memory module: Hub-style git-versioned markdown in knowledge/ structure
-- [ ] Git versioning module: auto-commit data changes
-- [ ] Install script: `git clone` + setup on existing Claude Box
-- [ ] Module state stored in Hub knowledge/ directory structure
-- [ ] Each module can be independently installed, configured, and uninstalled
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -41,6 +42,7 @@ Any user can spin up a personal AI assistant by installing Animaya on their Clau
 - **Voidnet integration:** Users buy a Claude Box through Voidnet, then install Animaya from Voidnet's web interface. Animaya itself is a Voidnet service.
 - **Hub architecture:** Central git repo (~/hub) with knowledge/, backlog/, workspace/. Module data lives in Hub's knowledge/ structure — git-versioned, auditable, portable.
 - **Target users:** Friends and their friends within Voidnet platform. V1 target: working on own Claude Box for daily personal use.
+- **v1.0 shipped:** 2026-04-15. Full audit trail in `.planning/milestones/`.
 
 ## Constraints
 
@@ -54,11 +56,15 @@ Any user can spin up a personal AI assistant by installing Animaya on their Clau
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| LXC instead of Docker | Simpler, direct Proxmox integration, no nested virtualization | — Pending |
-| Fresh rewrite over migration | Architecture change too fundamental for incremental migration | — Pending |
-| Folder + manifest modules | Simple, transparent, no package manager overhead | — Pending |
-| Hub knowledge/ for module state | Git-versioned, auditable, shared across agents, already proven | — Pending |
-| Telegram as primary interface | Users already use Telegram, proven in v1 | — Pending |
+| LXC instead of Docker | Simpler, direct Proxmox integration, no nested virtualization | Validated — clean installs on Claude Box |
+| Fresh rewrite over migration | Architecture change too fundamental for incremental migration | Validated — clean codebase, no Docker residue |
+| Folder + manifest modules | Simple, transparent, no package manager overhead | Validated — pydantic validation, zero-artifact uninstall works |
+| Hub knowledge/ for module state | Git-versioned, auditable, shared across agents, already proven | Validated — memory/identity/git-versioning all use Hub |
+| Telegram as primary interface | Users already use Telegram, proven in v1 | Validated — Telethon smoke tests PASS against live bot |
+| FastAPI + HTMX (no npm) | Eliminate frontend build complexity | Validated — dashboard ships with zero build toolchain |
+| Port v1 bridge verbatim | Preserves proven streaming/lock/chunking logic | Validated — avoids regressions on known-working code |
+| Telethon harness at hub level | Reusable across workspace agents, not tied to animaya repo | Validated — harness lives at ~/hub/telethon/ |
+| Tech debt accepted at v1.0 | Nyquist partial on 3 phases + cosmetic streaming artifact | Accepted — all 27 REQ satisfied, non-blocking |
 
 ## Evolution
 
@@ -78,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-13 after initialization*
+*Last updated: 2026-04-15 after milestone v1.0 completion*
