@@ -1,9 +1,10 @@
 ---
 phase: 8
 slug: bridge-extraction-supervisor-cutover
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: audited
+nyquist_compliant: true
+wave_0_complete: true
+last_audit: 2026-04-16
 created: 2026-04-15
 ---
 
@@ -40,8 +41,8 @@ created: 2026-04-15
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | T1-P01 | 01 | 1 | BRDG-01 | T-08-02 (runtime_entry injection) | Validated dotted bot.* path; rejects os.system | unit | pytest tests/modules/test_bridge_module.py -x | ✅ | ✅ |
 | T2-P01 | 01 | 1 | BRDG-01 | T-08-03 (errored module blocks boot) | Exception isolation per module | unit | pytest tests/modules/test_supervisor.py -x | ✅ | ✅ |
-| T3a-P01 | 01 | 1 | BRDG-03 | T-08-04 (zombie polling) | on_stop order assertions; uninstall wiring | unit (xfail P02) | pytest tests/modules/test_supervisor_cutover.py -x | ✅ | ⬜ |
-| T3b-P01 | 01 | 1 | BRDG-04 | T-08-01 (token in logs) | Token not in REQUIRED_ENV_VARS; config.json canonical | unit (xfail P03) | pytest tests/modules/test_bridge_config_source.py -x | ✅ | ⬜ |
+| T3a-P01 | 01 | 1 | BRDG-03 | T-08-04 (zombie polling) | on_stop order assertions; uninstall wiring | unit | pytest tests/modules/test_supervisor_cutover.py -x | ✅ | ✅ |
+| T3b-P01 | 01 | 1 | BRDG-04 | T-08-01 (token in logs) | Token not in REQUIRED_ENV_VARS; config.json canonical | unit | pytest tests/modules/test_bridge_config_source.py -x | ✅ | ✅ |
 
 *Populated by planner. Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,11 +50,11 @@ created: 2026-04-15
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_bridge_module.py` — stubs for BRDG-01 (lifecycle: on_start/on_stop contract, registry entry, zero import from core)
-- [ ] `tests/test_supervisor_cutover.py` — stubs for BRDG-03 (supervisor installs/uninstalls bridge, shutdown order assertions)
-- [ ] `tests/test_bridge_config_source.py` — stubs for BRDG-04 (config.json canonical, TELEGRAM_BOT_TOKEN optional bootstrap)
-- [ ] `tests/conftest.py` — shared fixtures: temp `/data`, stub `app_ctx`, PTB Application mock, log capture
-- [ ] Telethon harness reuse from `~/hub/telethon` — install → round-trip → uninstall smoke test
+- [x] `tests/test_bridge_module.py` — 12 tests for BRDG-01 (lifecycle, registry, isolation) ✅
+- [x] `tests/test_supervisor_cutover.py` — 13 tests for BRDG-03 (install/uninstall/stop order) ✅
+- [x] `tests/test_bridge_config_source.py` — 5 tests for BRDG-04 (config.json canonical, token seed) ✅
+- [x] `tests/conftest.py` — shared fixtures ✅
+- [x] Telethon harness — moved to Manual-Only (requires live LXC + Telegram API)
 
 ---
 
@@ -62,16 +63,34 @@ created: 2026-04-15
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Live Telegram round-trip on animaya-dev LXC | BRDG-01 | Requires live Telegram API + LXC access | `ssh root@tower 'pct exec 205 -- sudo -u animaya systemctl restart animaya'` then send test message via test bot token |
+| SC#3 Telethon e2e bridge lifecycle | BRDG-01 | Requires live LXC 205, real Telegram bot token, network access | Install bridge → send msg → confirm reply → uninstall → confirm silence → reinstall → confirm reply. Use `~/hub/telethon` harness |
+| Dashboard module install/uninstall via UI | BRDG-01 | Requires live deployed instance with Caddy | Open dashboard → modules page → install/uninstall telegram-bridge → verify /api/modules response |
+| Boot order log verification | BRDG-01 | Requires live LXC + journalctl | Deploy, restart, verify log sequence: assemble_claude_md → migrate → uvicorn → supervisor start |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (SC#3 moved to Manual-Only)
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s (1.64s full suite)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ✅ validated
+
+---
+
+## Validation Audit 2026-04-16
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 1 |
+| Resolved | 0 |
+| Escalated to manual-only | 1 |
+
+**Details:**
+- SC#3 Telethon e2e (`tests/telethon/test_bridge_lifecycle_e2e.py`) — moved to Manual-Only. Requires live LXC 205 + Telegram API; cannot run in CI.
+- T3a-P01, T3b-P01 status updated ⬜→✅ (xfail markers removed in Plan 02/03, all tests green).
+- Full suite: 90 passed, 0 failed, 1.64s runtime.
