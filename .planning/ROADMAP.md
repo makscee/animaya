@@ -18,6 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: First-Party Modules** - Identity, memory, and git-versioning modules fully operational
 - [ ] **Phase 5: Web Dashboard** - FastAPI + HTMX dashboard for bot management and module configuration
 - [x] **Phase 6: Telethon Test Harness** - Claude Code can drive end-to-end Telegram conversations against the deployed bot (completed 2026-04-14)
+- [ ] **Phase 7: Close v1.0 Audit Gaps** - Retroactive VERIFICATION.md for phases 02/03/05, Nyquist sign-off, REQUIREMENTS.md bookkeeping
 
 ## Phase Details
 
@@ -136,3 +137,23 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 **Plans:** 1/1 plans complete
 Plans:
 - [x] 06-01-PLAN.md — Telethon harness at ~/hub/telethon/ (client, driver, smoke test, README) — completed 2026-04-14, smoke test PASSES against @mks_test_assistant_bot
+
+### Phase 7: Close v1.0 Audit Gaps
+
+**Goal:** Close all documentation/verification gaps identified by `v1.0-MILESTONE-AUDIT.md` so milestone can be archived with clean records. No new feature code — retroactive verification of already-shipped work.
+**Depends on:** Phase 6
+**Requirements:** TELE-01..05, MODS-01..06, DASH-01..06 (retroactive verification); TEST-01..03 (traceability insertion)
+**Gap Closure:** Closes gaps from `.planning/v1.0-MILESTONE-AUDIT.md`
+**Success Criteria** (what must be TRUE):
+  1. `02-VERIFICATION.md`, `03-VERIFICATION.md`, `05-VERIFICATION.md` exist with all requirements SATISFIED or explicit gap acknowledgement
+  2. DASH-02, DASH-04, DASH-05 verified satisfied against shipped code in Phase 5, or marked unsatisfied with evidence
+  3. `02-VALIDATION.md` and `06-VALIDATION.md` retroactively created; Nyquist sign-off done for all six phases (01/02/03/04/05/06)
+  4. REQUIREMENTS.md checkboxes match shipped reality for all 27+3 REQ-IDs; traceability table reflects true phase assignment and status
+  5. Re-running `/gsd-audit-milestone 1.0` yields `status: passed`
+**Plans:** TBD (target ~5 plans)
+Plans:
+- [ ] 07-01-PLAN.md — Retroactive VERIFICATION.md for Phase 02 (TELE-01..05) via gsd-verifier agent against shipped bridge code
+- [ ] 07-02-PLAN.md — Retroactive VERIFICATION.md for Phase 03 (MODS-01..06) via gsd-verifier agent against shipped module system code
+- [ ] 07-03-PLAN.md — Retroactive VERIFICATION.md for Phase 05 (DASH-01..06, including unresolved DASH-02/04/05) via gsd-verifier agent against shipped dashboard code
+- [ ] 07-04-PLAN.md — Missing VALIDATION.md (02, 06) + Nyquist sign-off for all phases
+- [ ] 07-05-PLAN.md — REQUIREMENTS.md bookkeeping: checkboxes, traceability table, TEST-01..03 entry
