@@ -1,13 +1,27 @@
-"""Tests for bot entry point — Phase 2: Telegram bridge integration."""
+"""Tests for bot entry point — Phase 2: Telegram bridge integration.
+
+Phase 5 (Plan 05-07) extended REQUIRED_ENV_VARS to five entries and
+replaced ``app.run_polling()`` with an async ``_run()`` that runs
+uvicorn + PTB polling in the same event loop. Regression tests below
+set all required vars and patch the async runner.
+"""
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from bot.main import DEFAULT_DATA_PATH, REQUIRED_ENV_VARS, assemble_claude_md, main
+
+
+def _set_phase5_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Set the three Phase-5 required env vars (SESSION_SECRET,
+    TELEGRAM_OWNER_ID, TELEGRAM_BOT_USERNAME) so main() passes its env-gate."""
+    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
+    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
+    monkeypatch.setenv("TELEGRAM_BOT_USERNAME", "test_bot")
 
 
 class TestEnvValidation:
@@ -42,8 +56,12 @@ class TestDataDirectory:
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(data_dir))
-        mock_app = MagicMock()
-        with patch("bot.bridge.telegram.build_app", return_value=mock_app):
+        _set_phase5_env(monkeypatch)
+
+        async def _noop_run(*a, **kw):
+            return None
+
+        with patch("bot.main._run", side_effect=_noop_run):
             main()
         assert data_dir.exists()
 
@@ -81,14 +99,47 @@ class TestTelegramBridgeIntegration:
     def test_main_calls_build_app_with_token(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """main() must call build_app with the TELEGRAM_BOT_TOKEN value."""
+        """main() must call build_app with the TELEGRAM_BOT_TOKEN value
+        inside its async _run() coroutine."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "my-bot-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(tmp_path))
-        mock_app = MagicMock()
-        with patch("bot.bridge.telegram.build_app", return_value=mock_app) as mock_build:
+        _set_phase5_env(monkeypatch)
+
+        mock_tg_app = MagicMock()
+        mock_tg_app.__aenter__ = AsyncMock(return_value=mock_tg_app)
+        mock_tg_app.__aexit__ = AsyncMock(return_value=None)
+        mock_tg_app.start = AsyncMock()
+        mock_tg_app.stop = AsyncMock()
+        mock_tg_app.updater = MagicMock()
+        mock_tg_app.updater.start_polling = AsyncMock()
+        mock_tg_app.updater.stop = AsyncMock()
+
+        # Stub uvicorn.Server so serve() returns immediately.
+        class _StubServer:
+            def __init__(self, config):
+                self.config = config
+                self.should_exit = False
+
+            async def serve(self):
+                return None
+
+        # Trigger stop_event immediately so the awaiter returns.
+        import asyncio as _asyncio
+
+        class _AutoSetEvent(_asyncio.Event):
+            def __init__(self):
+                super().__init__()
+                self.set()
+
+        with (
+            patch("bot.bridge.telegram.build_app", return_value=mock_tg_app) as mock_build,
+            patch("bot.main.uvicorn.Server", _StubServer),
+            patch("bot.main.build_dashboard_app", return_value=MagicMock()),
+            patch("bot.main.asyncio.Event", _AutoSetEvent),
+        ):
             main()
-        # Phase 4 added post_init kwarg for git-versioning commit loop.
+
         mock_build.assert_called_once()
         args, kwargs = mock_build.call_args
         assert args == ("my-bot-token",)
@@ -97,14 +148,47 @@ class TestTelegramBridgeIntegration:
     def test_main_calls_run_polling(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """main() must call app.run_polling() (not asyncio.Event().wait())."""
+        """main() must start Telegram polling via app.updater.start_polling()
+        (Phase 5 replaced the blocking run_polling with async start/updater)."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(tmp_path))
-        mock_app = MagicMock()
-        with patch("bot.bridge.telegram.build_app", return_value=mock_app):
+        _set_phase5_env(monkeypatch)
+
+        mock_tg_app = MagicMock()
+        mock_tg_app.__aenter__ = AsyncMock(return_value=mock_tg_app)
+        mock_tg_app.__aexit__ = AsyncMock(return_value=None)
+        mock_tg_app.start = AsyncMock()
+        mock_tg_app.stop = AsyncMock()
+        mock_tg_app.updater = MagicMock()
+        mock_tg_app.updater.start_polling = AsyncMock()
+        mock_tg_app.updater.stop = AsyncMock()
+
+        class _StubServer:
+            def __init__(self, config):
+                self.config = config
+                self.should_exit = False
+
+            async def serve(self):
+                return None
+
+        import asyncio as _asyncio
+
+        class _AutoSetEvent(_asyncio.Event):
+            def __init__(self):
+                super().__init__()
+                self.set()
+
+        with (
+            patch("bot.bridge.telegram.build_app", return_value=mock_tg_app),
+            patch("bot.main.uvicorn.Server", _StubServer),
+            patch("bot.main.build_dashboard_app", return_value=MagicMock()),
+            patch("bot.main.asyncio.Event", _AutoSetEvent),
+        ):
             main()
-        mock_app.run_polling.assert_called_once()
+
+        mock_tg_app.start.assert_awaited_once()
+        mock_tg_app.updater.start_polling.assert_awaited_once()
 
     def test_assemble_claude_md_before_build_app(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -113,8 +197,9 @@ class TestTelegramBridgeIntegration:
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(tmp_path))
+        _set_phase5_env(monkeypatch)
+
         call_order: list[str] = []
-        mock_app = MagicMock()
 
         original_assemble = assemble_claude_md
 
@@ -122,13 +207,40 @@ class TestTelegramBridgeIntegration:
             call_order.append("assemble_claude_md")
             original_assemble(data_path)
 
-        def track_build_app(token: str, **kwargs) -> MagicMock:
+        mock_tg_app = MagicMock()
+        mock_tg_app.__aenter__ = AsyncMock(return_value=mock_tg_app)
+        mock_tg_app.__aexit__ = AsyncMock(return_value=None)
+        mock_tg_app.start = AsyncMock()
+        mock_tg_app.stop = AsyncMock()
+        mock_tg_app.updater = MagicMock()
+        mock_tg_app.updater.start_polling = AsyncMock()
+        mock_tg_app.updater.stop = AsyncMock()
+
+        def track_build_app(token: str, **kwargs):
             call_order.append("build_app")
-            return mock_app
+            return mock_tg_app
+
+        class _StubServer:
+            def __init__(self, config):
+                self.config = config
+                self.should_exit = False
+
+            async def serve(self):
+                return None
+
+        import asyncio as _asyncio
+
+        class _AutoSetEvent(_asyncio.Event):
+            def __init__(self):
+                super().__init__()
+                self.set()
 
         with (
             patch("bot.main.assemble_claude_md", side_effect=track_assemble),
             patch("bot.bridge.telegram.build_app", side_effect=track_build_app),
+            patch("bot.main.uvicorn.Server", _StubServer),
+            patch("bot.main.build_dashboard_app", return_value=MagicMock()),
+            patch("bot.main.asyncio.Event", _AutoSetEvent),
         ):
             main()
 

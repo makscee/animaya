@@ -40,6 +40,17 @@ EOF
     echo "--> .env created and secured."
 fi
 
+# ── Phase 5 dashboard env vars ─────────────────────────────────────────────────
+if [[ -z "${SESSION_SECRET:-}" ]]; then
+    echo "NOTE: SESSION_SECRET not set. Generate one with: openssl rand -hex 32"
+fi
+if [[ -z "${TELEGRAM_OWNER_ID:-}" ]]; then
+    echo "NOTE: TELEGRAM_OWNER_ID not set. Get your Telegram user ID from @userinfobot"
+fi
+if [[ -z "${TELEGRAM_BOT_USERNAME:-}" ]]; then
+    echo "NOTE: TELEGRAM_BOT_USERNAME not set. Use your bot's username without the @ prefix"
+fi
+
 # ── Node.js check ──────────────────────────────────────────────────────────────
 if ! command -v node &>/dev/null; then
     echo "WARNING: Node.js not found. Claude Code SDK requires Node.js. Install it before running Animaya."
