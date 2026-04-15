@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: Onboarding Polish & Bridge-as-Module
-status: ready_to_plan_phase
-stopped_at: ""
-last_updated: "2026-04-15T00:00:00.000Z"
-last_activity: 2026-04-15 -- v2.0 roadmap created (phases 8-12)
+milestone_name: — Onboarding Polish & Bridge-as-Module
+status: executing
+stopped_at: v2.0 roadmap complete — ready to plan Phase 8
+last_updated: "2026-04-15T19:41:19.792Z"
+last_activity: 2026-04-15 -- Phase 08 execution started
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 3
   completed_plans: 0
   percent: 0
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Any user can spin up a personal AI assistant by installing Animaya on their Claude Box, then customize it module-by-module — each module is self-contained, configurable, and reversible.
-**Current focus:** v2.0 — Onboarding Polish & Bridge-as-Module
+**Current focus:** Phase 08 — bridge-extraction-supervisor-cutover
 
 ## Current Position
 
-Phase: 8 (Bridge Extraction & Supervisor Cutover) — not yet planned
-Plan: —
-Status: Ready for `/gsd-plan-phase 8`
-Last activity: 2026-04-15 — v2.0 roadmap created (5 phases, 21 REQ mapped, 100% coverage)
+Phase: 08 (bridge-extraction-supervisor-cutover) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 08
+Last activity: 2026-04-15 -- Phase 08 execution started
 
 Progress: [          ] 0%
 
@@ -79,6 +79,7 @@ Progress: [          ] 0%
 ### Decisions
 
 All v1.0 decisions logged in PROJECT.md Key Decisions table. v2.0 carries them forward:
+
 - Phase numbering continues (no reset) — 999.1 backlog item absorbed into v2.0 phases 8–10.
 - Zero new pip dependencies in v2.0 — only htmx 2.0.8 + htmx-ext-sse vendored for Phase 12 SSE chat.
 - SEC-01 (token redaction) is verified in Phase 9 and re-asserted in Phase 10 success criteria.
