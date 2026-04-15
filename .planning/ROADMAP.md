@@ -28,3 +28,18 @@ Archive: `.planning/milestones/` — ROADMAP, REQUIREMENTS, AUDIT, and all 7 pha
 ## Next Milestone
 
 (Not yet planned — use `/gsd-new-milestone` to start v2.0 planning)
+
+## Backlog
+
+### Phase 999.1: Telegram bridge as installable module with owner-claim flow (BACKLOG)
+
+**Goal:** Extract the Telegram bridge from core into an installable module. Install flow accepts bot token via dashboard form, starts polling only after install, stores token in config.json. Core bot starts dashboard only. First message to a freshly-installed bridge triggers an ownership-claim: bot DMs a 6-digit code shown on dashboard; user replies with code in Telegram to claim ownership. On claim, persist `user_id` to module config as the owner allowlist (replacing the hotfix `TELEGRAM_OWNER_ID` env gate in commit 992332f).
+
+**Why:** Matches v2 architecture intent — "every feature beyond core must be a module." Closes the bridge-management gap (token / polling currently require restart + env edit) and lets owners rotate tokens or transfer ownership from the dashboard.
+
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
