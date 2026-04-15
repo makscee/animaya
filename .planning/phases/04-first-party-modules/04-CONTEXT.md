@@ -138,3 +138,12 @@ Covers IDEN-01..04, MEMO-01..04, GITV-01..03. No dashboard UX (Phase 5). Module 
 
 *Phase: 04-first-party-modules*
 *Context gathered: 2026-04-14*
+
+## Locked Assumptions
+
+**A1:** claude-haiku-4-5 (memory consolidation model; overridable per-install via memory module `config_schema.consolidation_model.default`)
+**A2:** ~/hub (git repo root; git-versioning uses `git -C ~/hub` with path-scoped `-- knowledge/`)
+**A7:** depends: ["identity"] (memory module manifest requires identity installed first; blocks identity uninstall while memory present)
+**Confirmed:** 2026-04-15
+
+**D-05 mechanism:** sentinel file at ${IDENTITY_DIR}/.pending-onboarding (created by install.sh, cleared by onboarding state-machine on completion, removed by uninstall.sh for MODS-05 clean).
