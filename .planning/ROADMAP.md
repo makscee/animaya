@@ -152,8 +152,8 @@ Plans:
   5. Re-running `/gsd-audit-milestone 1.0` yields `status: passed`
 **Plans:** 5 plans
 Plans:
-- [ ] 07-01-PLAN.md — Retroactive VERIFICATION.md for Phase 02 (TELE-01..05) via gsd-verifier agent against shipped bridge code
-- [ ] 07-02-PLAN.md — Retroactive VERIFICATION.md for Phase 03 (MODS-01..06) via gsd-verifier agent against shipped module system code
-- [ ] 07-03-PLAN.md — Retroactive VERIFICATION.md for Phase 05 (DASH-01..06, including unresolved DASH-02/04/05) via gsd-verifier agent against shipped dashboard code
-- [ ] 07-04-PLAN.md — Missing VALIDATION.md (02, 06) + Nyquist sign-off for all phases
-- [ ] 07-05-PLAN.md — REQUIREMENTS.md bookkeeping: checkboxes, traceability table, TEST-01..03 entry
+- [x] 07-01-PLAN.md — Retroactive VERIFICATION.md for Phase 02 (TELE-01..05) via gsd-verifier agent against shipped bridge code
+- [x] 07-02-PLAN.md — Retroactive VERIFICATION.md for Phase 03 (MODS-01..06) via gsd-verifier agent against shipped module system code
+- [x] 07-03-PLAN.md — Retroactive VERIFICATION.md for Phase 05 (DASH-01..06, including unresolved DASH-02/04/05) via gsd-verifier agent against shipped dashboard code
+- [x] 07-04-PLAN.md — Missing VALIDATION.md (02, 06) + Nyquist sign-off for all phases
+- [x] 07-05-PLAN.md — REQUIREMENTS.md bookkeeping: checkboxes, traceability table, TEST-01..03 entry
