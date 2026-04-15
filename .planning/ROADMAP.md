@@ -150,7 +150,7 @@ Plans:
   3. `02-VALIDATION.md` and `06-VALIDATION.md` retroactively created; Nyquist sign-off done for all six phases (01/02/03/04/05/06)
   4. REQUIREMENTS.md checkboxes match shipped reality for all 27+3 REQ-IDs; traceability table reflects true phase assignment and status
   5. Re-running `/gsd-audit-milestone 1.0` yields `status: passed`
-**Plans:** TBD (target ~5 plans)
+**Plans:** 5 plans
 Plans:
 - [ ] 07-01-PLAN.md — Retroactive VERIFICATION.md for Phase 02 (TELE-01..05) via gsd-verifier agent against shipped bridge code
 - [ ] 07-02-PLAN.md — Retroactive VERIFICATION.md for Phase 03 (MODS-01..06) via gsd-verifier agent against shipped module system code
