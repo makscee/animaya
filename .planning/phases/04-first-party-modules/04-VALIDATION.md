@@ -3,7 +3,7 @@ phase: 4
 slug: first-party-modules
 status: planner-locked
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-04-14
 updated: 2026-04-15
 ---
@@ -62,12 +62,12 @@ updated: 2026-04-15
 
 ## Wave 0 Requirements
 
-- [ ] `tests/modules/test_identity.py` — stubs for IDEN-01..04
-- [ ] `tests/modules/test_memory.py` — stubs for MEMO-01..04
-- [ ] `tests/modules/test_git_versioning.py` — stubs for GITV-01..03
-- [ ] `tests/modules/test_claude_query_injection.py` — stubs for IDEN-03 + MEMO-04
-- [ ] `tests/modules/conftest.py` — shared fixtures (`tmp_hub_with_identity`, `tmp_hub_with_memory`, `tmp_hub_git_repo`, `fake_claude_query`)
-- [ ] User confirms locked assumptions A1 (`claude-haiku-4-5`), A2 (`~/hub/`), A7 (`memory depends:[identity]`)
+- [x] `tests/modules/test_identity.py` — stubs for IDEN-01..04
+- [x] `tests/modules/test_memory.py` — stubs for MEMO-01..04
+- [x] `tests/modules/test_git_versioning.py` — stubs for GITV-01..03
+- [x] `tests/modules/test_claude_query_injection.py` — stubs for IDEN-03 + MEMO-04
+- [x] `tests/modules/conftest.py` — shared fixtures (`tmp_hub_with_identity`, `tmp_hub_with_memory`, `tmp_hub_git_repo`, `fake_claude_query`)
+- [x] User confirms locked assumptions A1 (`claude-haiku-4-5`), A2 (`~/hub/`), A7 (`memory depends:[identity]`)
 
 ---
 
