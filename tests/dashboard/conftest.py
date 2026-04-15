@@ -69,5 +69,6 @@ def client(
     from fastapi.testclient import TestClient  # noqa: PLC0415
 
     app = build_app(hub_dir=temp_hub_dir)
-    with TestClient(app) as tc:
+    # follow_redirects=False so tests can assert on 302/303 Location headers.
+    with TestClient(app, follow_redirects=False) as tc:
         yield tc
