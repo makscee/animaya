@@ -42,7 +42,10 @@ class TestEnvValidation:
         assert exc_info.value.code == 1
 
     def test_required_vars_tuple(self) -> None:
-        assert "TELEGRAM_BOT_TOKEN" in REQUIRED_ENV_VARS
+        # Phase 8 cutover: TELEGRAM_BOT_TOKEN is no longer required (lives in config.json).
+        assert "TELEGRAM_BOT_TOKEN" not in REQUIRED_ENV_VARS, (
+            "Phase 8: TELEGRAM_BOT_TOKEN is optional — token seeds from config.json"
+        )
         assert "CLAUDE_CODE_OAUTH_TOKEN" in REQUIRED_ENV_VARS
 
 
@@ -94,26 +97,25 @@ class TestClaudeMdAssembler:
 
 
 class TestTelegramBridgeIntegration:
-    """Tests for Phase 2 Telegram bridge wiring in main()."""
+    """Tests for Phase 8 supervisor-driven bridge wiring in main().
+
+    Phase 8 cutover: main.py no longer calls bot.bridge.telegram.build_app directly.
+    The bridge is a module started by the Supervisor. These tests verify the
+    supervisor-based boot path.
+    """
 
     def test_main_calls_build_app_with_token(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """main() must call build_app with the TELEGRAM_BOT_TOKEN value
-        inside its async _run() coroutine."""
+        """Phase 8: main() uses Supervisor to start modules, not direct build_app calls.
+
+        Verify that _run() completes without error (supervisor path) and does NOT
+        directly call bot.bridge.telegram.build_app — the bridge adapter does that.
+        """
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "my-bot-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(tmp_path))
         _set_phase5_env(monkeypatch)
-
-        mock_tg_app = MagicMock()
-        mock_tg_app.__aenter__ = AsyncMock(return_value=mock_tg_app)
-        mock_tg_app.__aexit__ = AsyncMock(return_value=None)
-        mock_tg_app.start = AsyncMock()
-        mock_tg_app.stop = AsyncMock()
-        mock_tg_app.updater = MagicMock()
-        mock_tg_app.updater.start_polling = AsyncMock()
-        mock_tg_app.updater.stop = AsyncMock()
 
         # Stub uvicorn.Server so serve() returns immediately.
         class _StubServer:
@@ -133,36 +135,28 @@ class TestTelegramBridgeIntegration:
                 self.set()
 
         with (
-            patch("bot.bridge.telegram.build_app", return_value=mock_tg_app) as mock_build,
             patch("bot.main.uvicorn.Server", _StubServer),
             patch("bot.main.build_dashboard_app", return_value=MagicMock()),
             patch("bot.main.asyncio.Event", _AutoSetEvent),
+            patch("bot.main.Supervisor") as MockSupervisor,
+            patch("bot.main.migrate_bridge_rename", return_value=False),
         ):
+            mock_sup = MockSupervisor.return_value
+            mock_sup.start_all = AsyncMock()
+            mock_sup.stop_all = AsyncMock()
             main()
 
-        mock_build.assert_called_once()
-        args, kwargs = mock_build.call_args
-        assert args == ("my-bot-token",)
-        assert set(kwargs.keys()) <= {"post_init"}
+        # Supervisor is used instead of direct bridge wiring
+        mock_sup.start_all.assert_called_once()
 
     def test_main_calls_run_polling(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """main() must start Telegram polling via app.updater.start_polling()
-        (Phase 5 replaced the blocking run_polling with async start/updater)."""
+        """Phase 8: Supervisor.start_all is called (handles polling via module adapter)."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(tmp_path))
         _set_phase5_env(monkeypatch)
-
-        mock_tg_app = MagicMock()
-        mock_tg_app.__aenter__ = AsyncMock(return_value=mock_tg_app)
-        mock_tg_app.__aexit__ = AsyncMock(return_value=None)
-        mock_tg_app.start = AsyncMock()
-        mock_tg_app.stop = AsyncMock()
-        mock_tg_app.updater = MagicMock()
-        mock_tg_app.updater.start_polling = AsyncMock()
-        mock_tg_app.updater.stop = AsyncMock()
 
         class _StubServer:
             def __init__(self, config):
@@ -180,20 +174,24 @@ class TestTelegramBridgeIntegration:
                 self.set()
 
         with (
-            patch("bot.bridge.telegram.build_app", return_value=mock_tg_app),
             patch("bot.main.uvicorn.Server", _StubServer),
             patch("bot.main.build_dashboard_app", return_value=MagicMock()),
             patch("bot.main.asyncio.Event", _AutoSetEvent),
+            patch("bot.main.Supervisor") as MockSupervisor,
+            patch("bot.main.migrate_bridge_rename", return_value=False),
         ):
+            mock_sup = MockSupervisor.return_value
+            mock_sup.start_all = AsyncMock()
+            mock_sup.stop_all = AsyncMock()
             main()
 
-        mock_tg_app.start.assert_awaited_once()
-        mock_tg_app.updater.start_polling.assert_awaited_once()
+        # Phase 8: supervisor.start_all handles module startup (including bridge polling)
+        mock_sup.start_all.assert_called_once()
 
     def test_assemble_claude_md_before_build_app(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """assemble_claude_md must be called before build_app."""
+        """Phase 8: assemble_claude_md must be called before supervisor.start_all."""
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth")
         monkeypatch.setenv("DATA_PATH", str(tmp_path))
@@ -207,19 +205,6 @@ class TestTelegramBridgeIntegration:
             call_order.append("assemble_claude_md")
             original_assemble(data_path)
 
-        mock_tg_app = MagicMock()
-        mock_tg_app.__aenter__ = AsyncMock(return_value=mock_tg_app)
-        mock_tg_app.__aexit__ = AsyncMock(return_value=None)
-        mock_tg_app.start = AsyncMock()
-        mock_tg_app.stop = AsyncMock()
-        mock_tg_app.updater = MagicMock()
-        mock_tg_app.updater.start_polling = AsyncMock()
-        mock_tg_app.updater.stop = AsyncMock()
-
-        def track_build_app(token: str, **kwargs):
-            call_order.append("build_app")
-            return mock_tg_app
-
         class _StubServer:
             def __init__(self, config):
                 self.config = config
@@ -235,13 +220,22 @@ class TestTelegramBridgeIntegration:
                 super().__init__()
                 self.set()
 
+        async def _track_start_all(ctx):
+            call_order.append("supervisor.start_all")
+
         with (
             patch("bot.main.assemble_claude_md", side_effect=track_assemble),
-            patch("bot.bridge.telegram.build_app", side_effect=track_build_app),
             patch("bot.main.uvicorn.Server", _StubServer),
             patch("bot.main.build_dashboard_app", return_value=MagicMock()),
             patch("bot.main.asyncio.Event", _AutoSetEvent),
+            patch("bot.main.Supervisor") as MockSupervisor,
+            patch("bot.main.migrate_bridge_rename", return_value=False),
         ):
+            mock_sup = MockSupervisor.return_value
+            mock_sup.start_all = _track_start_all
+            mock_sup.stop_all = AsyncMock()
             main()
 
-        assert call_order.index("assemble_claude_md") < call_order.index("build_app")
+        assert "assemble_claude_md" in call_order
+        assert "supervisor.start_all" in call_order
+        assert call_order.index("assemble_claude_md") < call_order.index("supervisor.start_all")

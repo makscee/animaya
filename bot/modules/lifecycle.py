@@ -27,6 +27,7 @@ from bot.modules.registry import (
     get_entry,
     read_registry,
     remove_entry,
+    write_registry,
 )
 
 if TYPE_CHECKING:
@@ -263,6 +264,45 @@ def _rollback_after_failed_install(
         logger.error(
             "rollback left leaked paths for %s: %s", manifest.name, leaked
         )
+
+
+def seed_bridge_token_from_env(hub_dir: Path) -> None:
+    """D-8.4: One-shot seed — write TELEGRAM_BOT_TOKEN env into bridge config.
+
+    Reads the telegram-bridge registry entry's config dict, and if it has no
+    token, writes TELEGRAM_BOT_TOKEN from the environment into that config
+    entry atomically. Idempotent: subsequent calls with the same or different
+    env var are no-ops once a token exists.
+
+    Security: This function only reads env; it never logs the token value.
+
+    Args:
+        hub_dir: Hub data directory (contains registry.json).
+    """
+    entry = get_entry(hub_dir, "telegram-bridge")
+    if entry is None:
+        return  # bridge not installed
+
+    if entry.get("config", {}).get("token"):
+        return  # already has token — env ignored
+
+    env_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not env_token:
+        return  # nothing to seed
+
+    # Write token into the registry entry's config
+    reg = read_registry(hub_dir)
+    for mod_entry in reg["modules"]:
+        if mod_entry.get("name") == "telegram-bridge":
+            if not isinstance(mod_entry.get("config"), dict):
+                mod_entry["config"] = {}
+            mod_entry["config"]["token"] = env_token
+            break
+    write_registry(hub_dir, reg)
+    logger.warning(
+        "TELEGRAM_BOT_TOKEN seeded into telegram-bridge config in registry; "
+        "env var is deprecated after config has a token."
+    )
 
 
 async def uninstall(

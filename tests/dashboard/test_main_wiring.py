@@ -120,8 +120,9 @@ def test_main_calls_events_rotate(
 def test_main_spawns_uvicorn_task(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """_run() must schedule a uvicorn server task alongside PTB polling."""
+    """_run() must schedule a uvicorn server task (Phase 8: supervisor-driven)."""
     import asyncio
+    from unittest.mock import AsyncMock, MagicMock
 
     _set_all_required(monkeypatch)
     monkeypatch.setenv("DATA_PATH", str(tmp_path))
@@ -153,34 +154,12 @@ def test_main_spawns_uvicorn_task(
     # Stub dashboard build_app
     monkeypatch.setattr("bot.main.build_dashboard_app", lambda hub_dir: MagicMock())
 
-    # Stub PTB build_app: async-context-manager-compatible mock
-    ptb_app = MagicMock()
-    ptb_app.__aenter__ = AsyncMock(return_value=ptb_app)
-    ptb_app.__aexit__ = AsyncMock(return_value=None)
-    ptb_app.start = AsyncMock()
-    ptb_app.stop = AsyncMock()
-    ptb_app.updater = MagicMock()
-    ptb_app.updater.start_polling = AsyncMock()
-    ptb_app.updater.stop = AsyncMock()
-
-    def _fake_build_app(token, post_init=None):
-        return ptb_app
-
-    monkeypatch.setattr("bot.bridge.telegram.build_app", _fake_build_app)
-
-    # Trigger stop quickly after startup
-    async def _trigger_stop(stop_event):
-        await asyncio.sleep(0.05)
-        stop_event.set()
-
-    original_run = main_mod._run
-
-    async def _patched_run(data_path):
-        # monkey into original _run by hooking Event.wait via a task
-        # We'll rely on the fact that original _run awaits stop_event.wait().
-        # Use signal from stop_event captured via a side-channel:
-        # simplest: override stop_event.wait using a short sleep + set.
-        return await original_run(data_path)
+    # Phase 8: stub the Supervisor (bridge is now a module, not direct wiring)
+    mock_supervisor = MagicMock()
+    mock_supervisor.start_all = AsyncMock()
+    mock_supervisor.stop_all = AsyncMock()
+    monkeypatch.setattr("bot.main.Supervisor", lambda: mock_supervisor)
+    monkeypatch.setattr("bot.main.migrate_bridge_rename", lambda *a: False)
 
     # Patch asyncio.Event to auto-set after tasks scheduled
     class _AutoSetEvent(asyncio.Event):
@@ -194,5 +173,4 @@ def test_main_spawns_uvicorn_task(
 
     assert stub_server_instances, "uvicorn.Server was never instantiated"
     assert stub_server_instances[0].served, "uvicorn server.serve() was never awaited"
-    ptb_app.start.assert_awaited()
-    ptb_app.updater.start_polling.assert_awaited()
+    mock_supervisor.start_all.assert_called_once()
