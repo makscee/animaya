@@ -8,12 +8,27 @@ boot continues for remaining modules (D-8.2 exception policy).
 from __future__ import annotations
 
 import importlib
+import json
 import logging
+from pathlib import Path
 
 from bot.modules.context import AppContext
 from bot.modules.registry import read_registry
 
 logger = logging.getLogger(__name__)
+
+
+def _load_module_config(entry: dict) -> dict:
+    """Load config from module_dir/config.json, fall back to registry entry."""
+    module_dir = entry.get("module_dir", "")
+    if module_dir:
+        config_path = Path(module_dir) / "config.json"
+        if config_path.is_file():
+            try:
+                return json.loads(config_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                pass
+    return entry.get("config", {}) or {}
 
 
 # ── Supervisor ────────────────────────────────────────────────────────
@@ -58,7 +73,7 @@ class Supervisor:
             ctx.event_bus("info", "supervisor", f"module.starting {name}")
             try:
                 mod = importlib.import_module(runtime_entry)
-                config: dict = entry.get("config", {}) or {}
+                config = _load_module_config(entry)
                 handle = await mod.on_start(ctx, config)
                 self._handles[name] = handle
                 self._runtime_entries[name] = runtime_entry
