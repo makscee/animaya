@@ -567,32 +567,17 @@ def is_running() -> str:
 | A8 | `DASHBOARD_PORT` env (or fixed 8090) is free on the LXC | Code Examples | Conflict → uvicorn fails to bind. Fail-fast at startup. |
 | A9 | `bot/main.py` currently runs Telegram via PTB `Application.run_polling()` and can be refactored to coexist with uvicorn in a single asyncio.gather() | Code Examples | If PTB starts its own loop, must use `Application.initialize()` + `start()` + `updater.start_polling()` pattern instead. **Planner: read current `bot/main.py` before designing the wiring task.** |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`SESSION_SECRET` source**
-   - What we know: D-03 mandates `itsdangerous`-signed cookies. Existing `DASHBOARD_TOKEN` env is a generic auth token.
-   - What's unclear: Reuse `DASHBOARD_TOKEN` as the signing key, or introduce dedicated `SESSION_SECRET`?
-   - Recommendation: **Introduce `SESSION_SECRET`** (separate concern from a possibly-shared bearer token; allows future Voidnet rotation independently). Auto-generate in `setup.sh` via `openssl rand -hex 32` if missing.
+1. **`SESSION_SECRET` source** — RESOLVED: introduce dedicated `SESSION_SECRET` env var (separate from `DASHBOARD_TOKEN`). `setup.sh` auto-generates via `openssl rand -hex 32` if missing. Adopted in plan 05-02.
 
-2. **Module discovery — what counts as "available"?**
-   - What we know: `modules/` is the repo-local module directory (per `bot.modules.lifecycle.DEFAULT_MODULES_ROOT`).
-   - What's unclear: Should the dashboard list every subdir, or only those with valid `manifest.json`? What about modules outside the repo (recorded via `entry["module_dir"]`)?
-   - Recommendation: List **available = subdirs of `modules/` with valid manifest, minus already-installed**. Show installed-but-not-in-repo as a separate "installed (external source)" section. Validation errors on a manifest become an "available but invalid: {error}" badge.
+2. **Module discovery — what counts as "available"?** — RESOLVED: available = subdirs of `modules/` with valid `manifest.json`, minus already-installed. Installed-but-external-source shown as separate section. Invalid manifests shown as disabled rows with error badge. Adopted in plan 05-05.
 
-3. **`/setdomain` configuration**
-   - What we know: Telegram Login Widget requires the bot to have a registered domain.
-   - What's unclear: Is this already done for the deployed hostname?
-   - Recommendation: Add to deploy README; surface a "Login widget not loading?" troubleshooting note in the login template.
+3. **`/setdomain` configuration** — RESOLVED: documented as manual deploy step in README (plan 05-07) and surfaced as troubleshooting note in login template (plan 05-03).
 
-4. **PTB + uvicorn coexistence in `bot/main.py`**
-   - What we know: PTB v21+ supports `Application.run_polling()` (manages its own loop) AND a manual `initialize()/start()` flow.
-   - What's unclear: Phase 4 has already wired `bot/main.py`; the planner needs to know its current shape.
-   - Recommendation: Planner reads `bot/main.py` first task, designs the dashboard-startup wiring as a small surgical edit (probably `asyncio.gather(app.run_polling(...), uvicorn_serve())` or a `post_init` hook).
+4. **PTB + uvicorn coexistence in `bot/main.py`** — RESOLVED: plan 05-07 task 1 reads current `bot/main.py` first and wires via `asyncio.gather` or PTB `post_init` hook, whichever matches the current shape.
 
-5. **Where does `bot/events.py` live in import order?**
-   - What we know: D-20 wires emitters in bridge, modules, assembler, and a logging handler.
-   - What's unclear: To avoid a circular import (modules emitting via `bot.events`, dashboard reading via `bot.events`), the emitter should be a leaf module with **no internal imports**.
-   - Recommendation: `bot/events.py` imports only stdlib. All other modules import it. Verify in plan with the AST isolation test pattern from Phase 3.
+5. **Where does `bot/events.py` live in import order?** — RESOLVED: `bot/events.py` is a leaf module importing only stdlib. AST isolation test pattern from Phase 3 enforces this in plan 05-01.
 
 ## Environment Availability
 

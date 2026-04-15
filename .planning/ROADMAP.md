@@ -97,10 +97,16 @@ Plans:
   3. User installs a module from the UI; it appears as installed and its system prompt is active
   4. User uninstalls a module from the UI; it disappears from installed list and leaves no artifacts
   5. Module with a config_schema renders a form; user submits changes and they take effect
-**Plans**: 2 plans
+**Plans:** 8 plans
 Plans:
-- [ ] 02-01-PLAN.md &mdash; Port v1 bridge modules (formatting, telegram, claude_query) with tests
-- [ ] 02-02-PLAN.md &mdash; Wire bridge into main.py and verify end-to-end
+- [ ] 05-00-PLAN.md — Wave 0: add python-multipart + jsonschema deps, delete v1 dashboard, create tests/dashboard/ fixtures
+- [ ] 05-01-PLAN.md — bot/events.py JSONL emitter + tail + rotate (DASH-03)
+- [ ] 05-02-PLAN.md — Telegram Login Widget HMAC + itsdangerous session cookie + require_owner dep (DASH-02)
+- [ ] 05-03-PLAN.md — FastAPI app factory + base templates + static CSS + /login /auth/telegram /logout (DASH-01, DASH-02)
+- [ ] 05-04-PLAN.md — Home page with status strip + activity feed + error feed + 5s HTMX polling (DASH-03)
+- [ ] 05-05-PLAN.md — /modules browse + async install/uninstall job runner with 1s polling + 409 concurrency (DASH-04, DASH-05)
+- [ ] 05-06-PLAN.md — Config form renderer: JSON Schema to HTMX form with server-side jsonschema validation (DASH-06)
+- [ ] 05-07-PLAN.md — Wire uvicorn + PTB in one event loop, event emitters in bridge/modules/assembler, README deploy note (DASH-01, DASH-03)
 **UI hint**: yes
 
 ## Progress
