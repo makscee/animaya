@@ -122,7 +122,7 @@ class TestTelegramBridgeIntegration:
             call_order.append("assemble_claude_md")
             original_assemble(data_path)
 
-        def track_build_app(token: str) -> MagicMock:
+        def track_build_app(token: str, **kwargs) -> MagicMock:
             call_order.append("build_app")
             return mock_app
 
