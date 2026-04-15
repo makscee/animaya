@@ -55,13 +55,12 @@ All values from Voidnet ui-spec.md §2 and confirmed in `bot/dashboard/static/st
 | Role | Size | Weight | Line Height | Color Token |
 |------|------|--------|-------------|-------------|
 | Body | 1rem (16px) | 400 | 1.5 | `--text-primary` |
-| Label / small | 0.9rem (14px) | 400 | 1.5 | `--text-secondary` |
-| Micro / badge | 0.75rem (12px) | 500 | 1.4 | `--text-faint` or per-badge token |
-| Heading (H2) | 1.3rem (21px) | 600 | 1.3 | `--text-secondary` |
-| Section label (H3) | 1rem (16px) | 500 | 1.3 | `--text-dim`, uppercase, `letter-spacing: .05em` |
-| Monospace (code display) | 13px | 400 | 1.4 | `--text-secondary` — `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` |
+| Label / small — code display | 0.875rem (14px) | 400 | 1.5 | `--text-secondary` — code display uses `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` |
+| Micro / badge | 0.75rem (12px) | 400 | 1.4 | `--text-faint` or per-badge token |
+| Heading (H2) — pairing code display | 1.3rem (21px) | 600 | 1.3 | `--text-secondary` for headings; `--text-primary` + `letter-spacing: .3em` for pairing code |
+| Section label (H3) | 1rem (16px) | 400 | 1.3 | `--text-dim`, uppercase, `letter-spacing: .05em` |
 
-The pairing code display uses monospace 13px at weight 700 in `--text-primary` to ensure digits are visually distinct and scannable.
+Declared sizes: 12px / 14px / 16px / 21px (4 sizes). Declared weights: 400 (regular) and 600 (emphasis/heading/pairing-code) (2 weights). The pairing code display uses 21px at weight 600 with `letter-spacing: .3em` in `--text-primary` — visual weight is achieved via spacing, not a unique size or weight.
 
 ---
 
@@ -122,7 +121,7 @@ div#claim-status[hx-get="/api/modules/telegram-bridge/claim-status"
     .panel-header  "Claim Ownership"
     div[padding: 1rem 1.25rem]
       p  "Send this code to your bot in Telegram:"
-      div.pairing-code  "{{ code }}"   ← monospace 13px w-700 --text-primary
+      div.pairing-code  "{{ code }}"   ← 21px (1.3rem) w-600 letter-spacing:.3em --text-primary
       .progress[style="margin: .5rem 0"]
         .progress-bar[id=countdown-bar style="width: {{ pct }}%"]
       p.field-help  "Expires in {{ ttl_display }}  ·  {{ 5 - attempts }} attempts remaining"
@@ -133,7 +132,7 @@ div#claim-status[hx-get="/api/modules/telegram-bridge/claim-status"
 
 - Progress bar uses `--accent` fill, shrinks linearly as TTL drains
 - When TTL < 2 minutes: progress bar switches to `--warn` fill (add inline `style="background: var(--warn)"`)
-- `.pairing-code` is a new display-only element: `font-family: ui-monospace; font-size: 13px; font-weight: 700; letter-spacing: .3em; padding: .75rem 1rem; background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-primary); text-align: center; font-size: 1.5rem;`
+- `.pairing-code` is a new display-only element: `font-family: ui-monospace; font-size: 1.3rem; font-weight: 600; letter-spacing: .3em; padding: .75rem 1rem; background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-primary); text-align: center;`
 
 ### 4. Claimed State Block (state: claim_status == "claimed")
 
@@ -193,6 +192,18 @@ Reuses existing `.error` class:
 | Error — token required | "Token is required." |
 
 Tone: direct, no exclamation marks, lowercase after colon where applicable, solution-oriented (always states what to do next).
+
+---
+
+## Focal Points by FSM State
+
+| FSM State | Primary Visual Anchor |
+|-----------|----------------------|
+| not-installed | Token password input field — cursor lands here on page load; Install Bridge button is the sole CTA |
+| installed / unclaimed | "Generate Pairing Code" button — only interactive element in the claim block |
+| pending | Pairing code display block (`div.pairing-code`) — large monospace digits are the dominant element; countdown bar provides secondary attention signal |
+| claimed | Success confirmation text — static read state; Revoke Ownership button is visually de-emphasized (destructive, `.btn-danger`) to avoid accidental tap |
+| error (any) | `.error` alert box — `role="alert"` ensures immediate focus; positioned directly below the triggering form element |
 
 ---
 
@@ -263,8 +274,8 @@ One new display-only class must be added to `bot/dashboard/static/style.css`:
 /* ── Pairing code display (Phase 9) ────────────────────────────── */
 .pairing-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 600;
   letter-spacing: .3em;
   padding: .75rem 1rem;
   background: var(--bg-base);
