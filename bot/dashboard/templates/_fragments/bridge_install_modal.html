@@ -1,0 +1,52 @@
+<dialog class="modal" open id="bridge-install-modal"
+        onclose="this.remove()">
+  <div class="modal-head">
+    <h2>Install Telegram Bridge</h2>
+    <form method="dialog" style="margin:0">
+      <button type="submit" class="btn-icon" aria-label="Close">&times;</button>
+    </form>
+  </div>
+
+  <div class="modal-body">
+    <p style="margin-top:0">
+      Animaya connects to one Telegram bot you control. To finish installing the
+      bridge, paste a bot token issued by <strong>@BotFather</strong>.
+    </p>
+    <ol>
+      <li>Open
+        <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>
+        in Telegram.</li>
+      <li>Send <code>/newbot</code> and follow the prompts (name + username).</li>
+      <li>BotFather replies with a line like
+        <code>Use this token to access the HTTP API: 12345:ABC…</code> — copy it.</li>
+      <li>Paste the token below. It is validated via
+        <code>getMe</code> before anything is saved.</li>
+    </ol>
+
+    <div class="field">
+      <label for="token-input">Bot Token</label>
+      <input id="token-input" name="token" type="password"
+             autocomplete="off" spellcheck="false"
+             placeholder="110201543:AAHd&hellip;"
+             class="input">
+      <p class="field-help">
+        Stored locally in this LXC only. Never logged; never returned by the API.
+      </p>
+    </div>
+
+    <div id="status-toast" style="margin-top:.75rem"></div>
+  </div>
+
+  <div class="modal-actions">
+    <form method="dialog" style="margin:0">
+      <button type="submit" class="btn">Cancel</button>
+    </form>
+    <button type="button" class="btn btn-success"
+            hx-post="/api/modules/telegram-bridge/install"
+            hx-include="[name='token']"
+            hx-target="#status-toast"
+            hx-swap="innerHTML">
+      Install Bridge
+    </button>
+  </div>
+</dialog>

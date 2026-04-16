@@ -14,6 +14,11 @@
               hx-confirm="Uninstall {{ card.name }}? This removes its owned paths."
               hx-target="closest .card"
               hx-swap="outerHTML">Uninstall</button>
+    {% elif card.name == "telegram-bridge" %}
+      <button class="btn btn-success"
+              hx-post="/modules/{{ card.name }}/install"
+              hx-target="body"
+              hx-swap="beforeend">Install</button>
     {% else %}
       <button class="btn btn-success"
               hx-post="/modules/{{ card.name }}/install"

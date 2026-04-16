@@ -101,12 +101,14 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:
                 status_code=404, detail=f"module {name!r} not found",
             )
         # Phase 9: telegram-bridge requires a validated token BEFORE install.
-        # Intercept the generic install button and render the token form instead.
+        # Intercept the generic install button and open a modal dialog with
+        # BotFather instructions plus the password input. The dialog is
+        # appended to <body>; the module card stays untouched.
         if name == "telegram-bridge":
             return templates.TemplateResponse(
                 request,
-                "_fragments/bridge_install_form.html",
-                {"has_token": False, "name": name},
+                "_fragments/bridge_install_modal.html",
+                {"name": name},
             )
         try:
             job = await start_install(name, module_dir_for(name), hub_dir)

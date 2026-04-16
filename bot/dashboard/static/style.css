@@ -369,3 +369,68 @@ pre.job-log {
   text-align: center;
   user-select: all;
 }
+
+/* ── Modal dialog (Phase 9 install dialog) ────────────────────────────── */
+dialog.modal {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0;
+  max-width: 560px;
+  width: min(560px, 92vw);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+dialog.modal::backdrop {
+  background: rgba(0, 0, 0, .65);
+}
+dialog.modal .modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+dialog.modal .modal-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+}
+dialog.modal .btn-icon {
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: .15rem .5rem;
+  border-radius: 4px;
+}
+dialog.modal .btn-icon:hover {
+  color: var(--text-primary);
+  background: var(--bg-raised);
+}
+dialog.modal .modal-body {
+  padding: 1rem 1.25rem;
+}
+dialog.modal .modal-body ol {
+  padding-left: 1.25rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+dialog.modal .modal-body ol li {
+  margin: .25rem 0;
+}
+dialog.modal .modal-body code {
+  background: var(--bg-base);
+  padding: .1rem .35rem;
+  border-radius: 4px;
+  font-size: .9em;
+}
+dialog.modal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  padding: .85rem 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+}

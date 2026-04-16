@@ -60,8 +60,16 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
 
         Security: token value is never logged or included in responses (T-09-02).
         """
-        body = await request.json()
-        token: str = (body.get("token") or "").strip()
+        # Accept both JSON and form-urlencoded bodies. HTMX defaults to
+        # form-urlencoded; only posts JSON when the json-enc extension is
+        # loaded. Parse by Content-Type so either transport works.
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            body = await request.json()
+            token: str = (body.get("token") or "").strip()
+        else:
+            form = await request.form()
+            token = (form.get("token") or "").strip()
 
         if not token:
             return HTMLResponse(

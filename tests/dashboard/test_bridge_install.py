@@ -164,6 +164,28 @@ def test_install_empty_token(auth_client) -> None:
     assert "HX-Redirect" not in r.headers
 
 
+def test_install_accepts_form_encoded_body(auth_client, temp_hub_dir: Path) -> None:
+    """HTMX defaults to form-urlencoded when json-enc extension is not loaded.
+    The endpoint must parse either transport. Regression: was raising 500
+    JSONDecodeError when the modal submitted form-encoded data.
+    """
+    module_dir = temp_hub_dir / "modules" / "telegram-bridge"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    with patch(
+        "bot.dashboard.bridge_routes.validate_bot_token",
+        new=AsyncMock(return_value=(True, "testbot", None)),
+    ), patch(
+        "bot.dashboard.bridge_routes.start_install",
+        new=AsyncMock(return_value="job-id"),
+    ):
+        r = auth_client.post(
+            "/api/modules/telegram-bridge/install",
+            data={"token": "valid-token"},  # form-urlencoded, not JSON
+        )
+    assert r.status_code == 200
+    assert r.headers.get("HX-Redirect") == "/modules/telegram-bridge/config"
+
+
 def test_generic_install_intercepts_bridge_and_shows_token_form(auth_client) -> None:
     """POST /modules/telegram-bridge/install (the generic module-card Install button)
     must NOT start an install job — it must render the token input form instead.
@@ -176,10 +198,14 @@ def test_generic_install_intercepts_bridge_and_shows_token_form(auth_client) -> 
     r = auth_client.post("/modules/telegram-bridge/install")
 
     assert r.status_code == 200
-    # Renders the install form fragment
+    # Renders a modal dialog with BotFather instructions
+    assert "<dialog" in r.text
+    assert "open" in r.text  # dialog is auto-open
+    assert "BotFather" in r.text
+    # Password input
     assert 'name="token"' in r.text
     assert 'type="password"' in r.text
-    # Form submits to the TOKEN-VALIDATING endpoint, not the generic one
+    # Install button submits to the TOKEN-VALIDATING endpoint, not the generic one
     assert 'hx-post="/api/modules/telegram-bridge/install"' in r.text
     # Must NOT have triggered a start_install job (no running module_card)
     assert "module_card_running" not in r.text
