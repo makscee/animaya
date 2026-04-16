@@ -40,6 +40,12 @@ _stats = {
     "errors": 0,
 }
 
+# Module-level query import — kept here so tests can monkeypatch tg_bridge.query
+try:
+    from claude_code_sdk import query  # noqa: F401 — monkeypatchable hook
+except Exception:
+    query = None  # type: ignore[assignment]
+
 
 def get_stats() -> dict:
     return {**_stats}
@@ -76,6 +82,9 @@ _patch_sdk_message_parser()
 # Streaming throttle
 _STREAM_MIN_INTERVAL = 0.5
 _STREAM_MIN_CHARS = 30
+
+# Proactive greeting fallback (bilingual)
+_GREET_FALLBACK = "Hi / Привет — I'm Animaya. Let's get to know each other."
 
 
 # ── Concurrency (per-user lock) ────────────────────────────────────
@@ -125,6 +134,11 @@ async def _enqueue_or_run(user_id: int, update: Update, context: ContextTypes.DE
 
 async def _send_status(update: Update, text: str = "\u2026") -> object:
     return await update.message.reply_text(text, do_quote=True)
+
+
+async def _send_status_chat(chat, text: str = "\u2026") -> object:
+    """Send a status message on a chat object directly (no Update needed)."""
+    return await chat.send_message(text)
 
 
 async def _update_status(msg, text: str, parse_mode=None) -> None:
@@ -200,11 +214,9 @@ def _envelope_message(update: Update, text: str) -> str:
     return reply_prefix + text
 
 
-def _build_system_context(update: Update) -> str:
-    """Build dynamic system context injected per query."""
+def _build_system_context_from_chat(chat, user) -> str:
+    """Build dynamic system context from chat + user objects (no Update needed)."""
     now = datetime.now(timezone.utc)
-    chat = update.effective_chat
-    user = update.effective_user
     parts = [f"Current time (UTC): {now.strftime('%Y-%m-%d %H:%M')}"]
 
     if chat.type != "private":
@@ -222,17 +234,25 @@ def _build_system_context(update: Update) -> str:
         if user.language_code:
             parts.append(f"User language: {user.language_code}")
 
+    return "\n".join(parts)
+
+
+def _build_system_context(update: Update) -> str:
+    """Build dynamic system context injected per query."""
+    chat = update.effective_chat
+    user = update.effective_user
+    base = _build_system_context_from_chat(chat, user)
+
     thread_id = getattr(update.message, "message_thread_id", None) if update.message else None
     if thread_id:
-        parts.append(f"Forum topic thread_id: {thread_id}")
-
-    return "\n".join(parts)
+        return base + f"\nForum topic thread_id: {thread_id}"
+    return base
 
 
 # ── Streaming state ─────────────────────────────────────────────────
 
 
-def _make_stream_state(status_msg, update: Update) -> dict:
+def _make_stream_state(status_msg, update: Update | None, chat=None) -> dict:
     return {
         "status_msg": status_msg,
         "last_edit": 0.0,
@@ -241,6 +261,7 @@ def _make_stream_state(status_msg, update: Update) -> dict:
         "has_text": False,
         "pending_text": "",
         "update": update,
+        "chat": chat,
         "tools_used": [],
     }
 
@@ -318,7 +339,11 @@ async def _on_tool_use(state: dict, tool_name: str, tool_input: dict | None = No
             await _update_status(
                 state["status_msg"], md_to_html(display), parse_mode=ParseMode.HTML
             )
-        new_status = await _send_status(state["update"], status_text)
+        # Create a new status message via update or chat fallback
+        if state.get("update") is not None:
+            new_status = await _send_status(state["update"], status_text)
+        else:
+            new_status = await _send_status_chat(state["chat"], status_text)
         state["status_msg"] = new_status
         state["has_text"] = False
         state["first"] = True
@@ -329,7 +354,7 @@ async def _on_tool_use(state: dict, tool_name: str, tool_input: dict | None = No
         await _update_status(state["status_msg"], status_text)
 
 
-async def _finalize_stream(state: dict, reply: str, update: Update) -> None:
+async def _finalize_stream(state: dict, reply: str, update: Update | None, chat=None) -> None:
     status_msg = state["status_msg"]
     formatted = md_to_html(reply)
     if len(formatted) <= TG_MAX_LEN:
@@ -337,20 +362,36 @@ async def _finalize_stream(state: dict, reply: str, update: Update) -> None:
             await status_msg.edit_text(formatted, parse_mode=ParseMode.HTML)
         except Exception:
             await _delete_status(status_msg)
-            try:
-                await update.message.reply_text(formatted, parse_mode=ParseMode.HTML, do_quote=True)
-            except Exception:
-                await update.message.reply_text(reply, do_quote=True)
+            if update is not None:
+                try:
+                    await update.message.reply_text(
+                        formatted, parse_mode=ParseMode.HTML, do_quote=True
+                    )
+                except Exception:
+                    await update.message.reply_text(reply, do_quote=True)
+            else:
+                _chat = chat or state.get("chat")
+                if _chat is not None:
+                    with suppress(Exception):
+                        await _chat.send_message(formatted, parse_mode=ParseMode.HTML)
     else:
         await _delete_status(status_msg)
-        for i in range(0, len(formatted), TG_MAX_LEN):
-            chunk = formatted[i : i + TG_MAX_LEN]
-            try:
-                await update.message.reply_text(
-                    chunk, parse_mode=ParseMode.HTML, do_quote=(i == 0)
-                )
-            except Exception:
-                await update.message.reply_text(chunk, do_quote=(i == 0))
+        if update is not None:
+            for i in range(0, len(formatted), TG_MAX_LEN):
+                chunk = formatted[i : i + TG_MAX_LEN]
+                try:
+                    await update.message.reply_text(
+                        chunk, parse_mode=ParseMode.HTML, do_quote=(i == 0)
+                    )
+                except Exception:
+                    await update.message.reply_text(chunk, do_quote=(i == 0))
+        else:
+            _chat = chat or state.get("chat")
+            if _chat is not None:
+                for i in range(0, len(formatted), TG_MAX_LEN):
+                    chunk = formatted[i : i + TG_MAX_LEN]
+                    with suppress(Exception):
+                        await _chat.send_message(chunk, parse_mode=ParseMode.HTML)
 
 
 # ── Tool formatting ─────────────────────────────────────────────────
@@ -417,6 +458,200 @@ def _is_bot_addressed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
             return True
 
     return False
+
+
+# ── Proactive greeting helpers ──────────────────────────────────────
+
+
+def _build_greet_envelope(lang_code: str | None) -> str:
+    """Build the synthetic first_boot envelope for the proactive greeting."""
+    base = (
+        "[SYSTEM_EVENT: first_boot]\n"
+        "The operator has just claimed ownership of this bot for the first time. "
+        "They have not yet sent you any real message. Follow the instructions in "
+        "<bootstrap> and open the conversation yourself: greet them warmly in a "
+        "neutral-but-friendly way (English is fine if you have no signal about "
+        "their language yet; they will reveal it in their first reply and you "
+        "must mirror it from then on), introduce yourself briefly, and ask ONE "
+        "concrete opening question. Do not mention that this is a system event."
+    )
+    if lang_code and lang_code != "en":
+        base += (
+            f"\nThe operator's Telegram UI language is '{lang_code}' — prefer "
+            "that language for your opener."
+        )
+    return base
+
+
+# ── Shared streaming pipeline ───────────────────────────────────────
+
+
+async def _run_claude_and_stream(
+    chat,
+    user_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    envelope: str,
+    system_context: str,
+    session_dir: Path,
+    *,
+    status_msg=None,
+    update: Update | None = None,
+) -> str | None:
+    """Run one Claude turn through the streaming pipeline.
+
+    Args:
+        chat: Telegram Chat object (or compatible mock with send_message/send_action).
+        user_id: Telegram user ID for logging.
+        context: PTB context (provides context.bot for send_message fallback).
+        envelope: The prompt string to send to Claude.
+        system_context: Extra system context injected into build_options.
+        session_dir: Working directory for this Claude session.
+        status_msg: Optional pre-created status message; if None, one is created via
+            chat.send_message.
+        update: Optional Update; when present enables do_quote reply, file-echo, consolidation.
+
+    Returns:
+        Accumulated reply text, or None if the model returned nothing.
+    """
+    from bot.claude_query import build_options
+
+    data_dir = Path(os.environ.get("DATA_PATH", "/data"))
+
+    if status_msg is None:
+        status_msg = await chat.send_message("\u2026")
+
+    stream_state = _make_stream_state(status_msg, update, chat=chat)
+
+    async with _typing_loop(chat):
+        try:
+            from claude_code_sdk.types import AssistantMessage, TextBlock, ToolUseBlock
+
+            # Use module-level `query` so tests can monkeypatch tg_bridge.query
+            import bot.bridge.telegram as _self
+
+            _query_fn = _self.query
+
+            options = build_options(
+                data_dir=data_dir,
+                system_prompt_extra=system_context,
+                cwd=session_dir,
+            )
+
+            accumulated = ""
+            tools_used: list[str] = []
+            async for message in _query_fn(prompt=envelope, options=options):
+                if message is None:
+                    continue
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            accumulated += block.text
+                            await _stream_text(stream_state, accumulated)
+                        elif isinstance(block, ToolUseBlock):
+                            tools_used.append(_format_tool(block.name, block.input))
+                            await _on_tool_use(stream_state, block.name, block.input)
+
+            if accumulated.strip():
+                _stats["messages_sent"] += 1
+                await _finalize_stream(stream_state, accumulated, update, chat=chat)
+                if update is not None:
+                    await _send_referenced_files(accumulated, update)
+                    try:
+                        _emit_event(
+                            "info",
+                            "bridge",
+                            "reply sent",
+                            chat_id=chat.id,
+                        )
+                    except Exception:  # noqa: BLE001
+                        logger.debug("events.emit failed for bridge reply", exc_info=True)
+                    # MEMO-03: post-reply consolidation trigger (fire-and-forget).
+                    try:
+                        mem_entry = _registry_get_entry(data_dir, "memory")
+                    except Exception:
+                        mem_entry = None
+                    if mem_entry is not None:
+                        cfg = (
+                            mem_entry.get("config", {})
+                            if isinstance(mem_entry.get("config"), dict)
+                            else {}
+                        )
+                        every_n = int(cfg.get("consolidation_every_n_turns", 10))
+                        cons_model = cfg.get("consolidation_model", "claude-haiku-4-5")
+                        max_lines = int(cfg.get("core_max_lines", 150))
+                        text_for_memo = update.message.text or update.message.caption or ""
+                        maybe_trigger_consolidation(
+                            chat_data=context.chat_data,
+                            conversation_text=f"USER: {text_for_memo}\n\nASSISTANT: {accumulated}",
+                            every_n_turns=every_n,
+                            model=cons_model,
+                            max_lines=max_lines,
+                        )
+                return accumulated
+            else:
+                await _delete_status(stream_state["status_msg"])
+                return None
+
+        except Exception:
+            logger.exception("Error in Claude Code SDK")
+            _stats["errors"] += 1
+            await _update_status(stream_state["status_msg"], "\u274c Error processing message")
+            raise
+
+
+async def _claim_proactive_greet(
+    chat,
+    user,
+    context: ContextTypes.DEFAULT_TYPE,
+    module_dir: Path,
+) -> None:
+    """Send a Claude-authored greeting right after successful claim.
+
+    Gated by state['greeted']. On SDK failure, falls back to _GREET_FALLBACK
+    and still marks greeted=True (one attempt per bootstrap).
+    """
+    from bot.modules.telegram_bridge_state import read_state, write_state  # noqa: PLC0415
+
+    state = read_state(module_dir)
+    if state.get("greeted"):
+        return
+
+    envelope = _build_greet_envelope(user.language_code if user else None)
+    system_context = _build_system_context_from_chat(chat, user)
+    data_dir = Path(os.environ.get("DATA_PATH", "/data"))
+    session_key = str(chat.id)
+    session_dir = data_dir / "sessions" / session_key
+    session_dir.mkdir(parents=True, exist_ok=True)
+    session_claude = session_dir / "CLAUDE.md"
+    if not session_claude.exists():
+        claude_src = data_dir / "CLAUDE.md"
+        if claude_src.exists():
+            with suppress(OSError):
+                session_claude.symlink_to(claude_src)
+
+    try:
+        reply = await _run_claude_and_stream(
+            chat=chat,
+            user_id=user.id if user else 0,
+            context=context,
+            envelope=envelope,
+            system_context=system_context,
+            session_dir=session_dir,
+            status_msg=None,
+            update=None,
+        )
+        if not reply or not reply.strip():
+            # Model returned nothing — use fallback
+            await context.bot.send_message(chat_id=chat.id, text=_GREET_FALLBACK)
+    except Exception:
+        logger.exception("Proactive greeting failed — sending fallback")
+        with suppress(Exception):
+            await context.bot.send_message(chat_id=chat.id, text=_GREET_FALLBACK)
+
+    # Mark greeted regardless — do not retry in a loop if Claude is sad
+    state = read_state(module_dir)
+    state["greeted"] = True
+    write_state(module_dir, state)
 
 
 # ── /start handler ──────────────────────────────────────────────────
@@ -511,6 +746,7 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         else:
             session_key = str(chat.id)
 
+        data_dir = Path(os.environ.get("DATA_PATH", "/data"))
         session_dir = data_dir / "sessions" / session_key
         session_dir.mkdir(parents=True, exist_ok=True)
 
@@ -523,79 +759,21 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     session_claude.symlink_to(claude_src)
 
         status_msg = await _send_status(update)
-        state = _make_stream_state(status_msg, update)
 
-        async with _typing_loop(update.effective_chat):
-            try:
-                from claude_code_sdk import query
-                from claude_code_sdk.types import AssistantMessage, TextBlock, ToolUseBlock
-
-                from bot.claude_query import build_options
-
-                options = build_options(
-                    data_dir=data_dir,
-                    system_prompt_extra=system_context,
-                    cwd=session_dir,
-                )
-
-                accumulated = ""
-                tools_used: list[str] = []
-                async for message in query(prompt=envelope, options=options):
-                    if message is None:
-                        continue
-                    if isinstance(message, AssistantMessage):
-                        for block in message.content:
-                            if isinstance(block, TextBlock):
-                                accumulated += block.text
-                                await _stream_text(state, accumulated)
-                            elif isinstance(block, ToolUseBlock):
-                                tools_used.append(_format_tool(block.name, block.input))
-                                await _on_tool_use(state, block.name, block.input)
-
-                if accumulated.strip():
-                    _stats["messages_sent"] += 1
-                    await _finalize_stream(state, accumulated, update)
-                    await _send_referenced_files(accumulated, update)
-                    try:
-                        _emit_event(
-                            "info",
-                            "bridge",
-                            "reply sent",
-                            chat_id=update.effective_chat.id,
-                        )
-                    except Exception:  # noqa: BLE001
-                        logger.debug(
-                            "events.emit failed for bridge reply", exc_info=True
-                        )
-                    # MEMO-03: post-reply consolidation trigger (fire-and-forget).
-                    # Gated on memory module being installed; cadence + model from registry config.
-                    try:
-                        mem_entry = _registry_get_entry(data_dir, "memory")
-                    except Exception:
-                        mem_entry = None
-                    if mem_entry is not None:
-                        cfg = (
-                            mem_entry.get("config", {})
-                            if isinstance(mem_entry.get("config"), dict)
-                            else {}
-                        )
-                        every_n = int(cfg.get("consolidation_every_n_turns", 10))
-                        cons_model = cfg.get("consolidation_model", "claude-haiku-4-5")
-                        max_lines = int(cfg.get("core_max_lines", 150))
-                        maybe_trigger_consolidation(
-                            chat_data=context.chat_data,
-                            conversation_text=f"USER: {text}\n\nASSISTANT: {accumulated}",
-                            every_n_turns=every_n,
-                            model=cons_model,
-                            max_lines=max_lines,
-                        )
-                else:
-                    await _delete_status(state["status_msg"])
-
-            except Exception:
-                logger.exception("Error in Claude Code SDK")
-                _stats["errors"] += 1
-                await _update_status(state["status_msg"], "\u274c Error processing message")
+        try:
+            await _run_claude_and_stream(
+                chat=chat,
+                user_id=user_id,
+                context=context,
+                envelope=envelope,
+                system_context=system_context,
+                session_dir=session_dir,
+                status_msg=status_msg,
+                update=update,
+            )
+        except Exception:
+            # _run_claude_and_stream already logged + updated status_msg on error
+            _stats["errors"] += 1
 
     await _enqueue_or_run(user_id, update, context, inner)
 
@@ -654,6 +832,7 @@ async def _claim_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     # Success — claim ownership
+    # NOTE: no plaintext "Ownership claimed." reply — the greeting IS the ack.
     state.update(
         {
             "claim_status": "claimed",
@@ -662,10 +841,17 @@ async def _claim_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "pairing_code_salt": None,
             "pairing_code_expires": None,
             "pairing_attempts": 0,
+            "greeted": False,  # explicit default so _claim_proactive_greet sees a clean gate
         }
     )
     write_state(module_dir, state)
-    await update.message.reply_text("Ownership claimed. You are the owner of this bot.")
+    with suppress(Exception):
+        await _claim_proactive_greet(
+            chat=update.effective_chat,
+            user=update.effective_user,
+            context=context,
+            module_dir=module_dir,
+        )
     raise ApplicationHandlerStop
 
 
