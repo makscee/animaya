@@ -5,12 +5,10 @@ Covers TELE-01 through TELE-05 using mocks — no real SDK or Telegram calls.
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -173,7 +171,6 @@ async def test_typing_loop_cancels_cleanly():
 @pytest.mark.asyncio
 async def test_finalize_stream_chunks_long_text():
     """_finalize_stream splits text longer than TG_MAX_LEN into multiple messages."""
-    from bot.bridge.formatting import TG_MAX_LEN
     from bot.bridge.telegram import _finalize_stream, _make_stream_state
 
     update = _make_update()
@@ -275,10 +272,10 @@ async def test_error_increments_stats():
         raise RuntimeError("SDK failure")
         # Make it an async generator
         if False:
-            yield  # noqa: unreachable
+            yield  # noqa: F841
 
     update = _make_update()
-    ctx = _make_context()
+    _ctx = _make_context()
 
     # We need to simulate what _handle_message inner() does on error
     # by directly testing the error path logic
@@ -354,3 +351,104 @@ def test_build_options_no_memory_import():
     assert "bot.memory.core" not in source, (
         "bot.claude_query must NOT import from bot.memory.core in v2"
     )
+
+
+# ── _owner_gate tests ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_owner_gate_preclaim_drops_and_replies(tmp_path):
+    """Pre-claim (unclaimed): _owner_gate stops handler and replies with pairing prompt."""
+    from telegram.ext import ApplicationHandlerStop
+
+    from bot.bridge.telegram import _owner_gate
+    from bot.modules.telegram_bridge_state import write_state
+
+    write_state(tmp_path, {"claim_status": "unclaimed"})
+
+    update = _make_update()
+    ctx = _make_context()
+    ctx.bot_data["module_dir"] = tmp_path
+
+    with pytest.raises(ApplicationHandlerStop):
+        await _owner_gate(update, ctx)
+
+    update.message.reply_text.assert_called_once()
+    call_text = update.message.reply_text.call_args[0][0].lower()
+    assert "pairing code" in call_text
+    assert "dashboard" in call_text
+
+
+@pytest.mark.asyncio
+async def test_owner_gate_pending_drops_and_replies(tmp_path):
+    """Pre-claim (pending): _owner_gate stops handler and replies with pairing prompt."""
+    from telegram.ext import ApplicationHandlerStop
+
+    from bot.bridge.telegram import _owner_gate
+    from bot.modules.telegram_bridge_state import write_state
+
+    write_state(tmp_path, {"claim_status": "pending"})
+
+    update = _make_update()
+    ctx = _make_context()
+    ctx.bot_data["module_dir"] = tmp_path
+
+    with pytest.raises(ApplicationHandlerStop):
+        await _owner_gate(update, ctx)
+
+    update.message.reply_text.assert_called_once()
+    call_text = update.message.reply_text.call_args[0][0].lower()
+    assert "pairing code" in call_text
+    assert "dashboard" in call_text
+
+
+@pytest.mark.asyncio
+async def test_owner_gate_claimed_owner_passes(tmp_path):
+    """Post-claim owner: _owner_gate does not raise and does not reply."""
+    from bot.bridge.telegram import _owner_gate
+    from bot.modules.telegram_bridge_state import write_state
+
+    write_state(tmp_path, {"claim_status": "claimed", "owner_id": 12345})
+
+    update = _make_update(user_id=12345)
+    ctx = _make_context()
+    ctx.bot_data["module_dir"] = tmp_path
+
+    # Should not raise
+    await _owner_gate(update, ctx)
+
+    update.message.reply_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_owner_gate_claimed_non_owner_drops_silently(tmp_path):
+    """Post-claim non-owner: _owner_gate raises ApplicationHandlerStop silently (no reply)."""
+    from telegram.ext import ApplicationHandlerStop
+
+    from bot.bridge.telegram import _owner_gate
+    from bot.modules.telegram_bridge_state import write_state
+
+    write_state(tmp_path, {"claim_status": "claimed", "owner_id": 12345})
+
+    update = _make_update(user_id=99999)
+    ctx = _make_context()
+    ctx.bot_data["module_dir"] = tmp_path
+
+    with pytest.raises(ApplicationHandlerStop):
+        await _owner_gate(update, ctx)
+
+    update.message.reply_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_owner_gate_no_module_dir_passes():
+    """No module_dir in bot_data: _owner_gate allows through without raising or replying."""
+    from bot.bridge.telegram import _owner_gate
+
+    update = _make_update()
+    ctx = _make_context()
+    # module_dir intentionally absent from bot_data
+
+    await _owner_gate(update, ctx)
+
+    update.message.reply_text.assert_not_called()

@@ -708,7 +708,15 @@ async def _owner_gate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     from bot.modules.telegram_bridge_state import read_state  # noqa: PLC0415
     state = read_state(module_dir)
     if state.get("claim_status") != "claimed":
-        return  # not claimed yet = allow all messages through
+        # Pre-claim: _claim_handler (group=-2) already consumed valid pairing codes.
+        # Anything reaching here is NOT a code — drop it and prompt the user.
+        if update.message:
+            with suppress(Exception):
+                await update.message.reply_text(
+                    "This bot is not yet claimed. "
+                    "Send the 6-digit pairing code from the dashboard to claim ownership."
+                )
+        raise ApplicationHandlerStop
     owner_id = state.get("owner_id")
     if owner_id is None:
         return
