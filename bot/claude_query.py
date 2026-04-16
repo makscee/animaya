@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 # ── Identity / memory injection ─────────────────────────────────────
 HUB_KNOWLEDGE: Path = Path.home() / "hub" / "knowledge"
+REPO_ROOT: Path = Path(__file__).resolve().parent.parent
 _PLACEHOLDER_MARKER = "<!-- animaya:placeholder -->"
 _MAX_INJECT_CHARS = 8_000
 
@@ -32,9 +33,28 @@ def _read_for_injection(p: Path) -> str:
         return ""
     if len(text) > _MAX_INJECT_CHARS:
         text = text[:_MAX_INJECT_CHARS] + "\n…[truncated]"
-    # Escape closing tags for Animaya's three injection wrappers
+    # Escape closing tags for Animaya's injection wrappers
     for tag in ("identity-user", "identity-soul", "memory-core"):
         text = text.replace(f"</{tag}>", f"&lt;/{tag}&gt;")
+    return text
+
+
+def _read_bootstrap() -> str:
+    """Return BOOTSTRAP.md content if present at repo root; else empty string.
+
+    Applies _MAX_INJECT_CHARS truncation and escapes </bootstrap> to prevent
+    prompt-injection escapes. Does NOT skip placeholder markers — the file is
+    operator-authored and always intentional.
+    """
+    p = REPO_ROOT / "BOOTSTRAP.md"
+    if not p.is_file():
+        return ""
+    text = p.read_text(encoding="utf-8").strip()
+    if not text:
+        return ""
+    if len(text) > _MAX_INJECT_CHARS:
+        text = text[:_MAX_INJECT_CHARS] + "\n…[truncated]"
+    text = text.replace("</bootstrap>", "&lt;/bootstrap&gt;")
     return text
 
 
@@ -61,6 +81,11 @@ def build_options(
     parts = []
     if system_prompt_extra:
         parts.append(system_prompt_extra)
+
+    # Bootstrap injection: inject BOOTSTRAP.md when present (onboarding state)
+    bootstrap = _read_bootstrap()
+    if bootstrap:
+        parts.append(f"<bootstrap>\n{bootstrap}\n</bootstrap>")
 
     # IDEN-03: identity injection (XML-delimited per D-03)
     user_md = _read_for_injection(HUB_KNOWLEDGE / "identity" / "USER.md")
