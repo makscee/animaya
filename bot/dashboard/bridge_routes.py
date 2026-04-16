@@ -14,7 +14,6 @@ Security:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +24,8 @@ from fastapi.templating import Jinja2Templates
 
 from bot.dashboard.deps import require_owner
 from bot.dashboard.jobs import InProgressError, start_install
+from bot.dashboard.modules_view import module_dir_for
+from bot.modules import get_entry
 from bot.modules.telegram_bridge_state import (
     check_expiry,
     generate_pairing_code,
@@ -92,38 +93,23 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
                 "</div>"
             )
 
-        # Valid token — persist config.json atomically
-        hub_dir: Path = request.app.state.hub_dir
-        module_dir = hub_dir / "modules" / "telegram-bridge"
-        module_dir.mkdir(parents=True, exist_ok=True)
-
-        config_path = module_dir / "config.json"
-        tmp = config_path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps({"token": token}, indent=2), encoding="utf-8")
-        tmp.replace(config_path)
-
-        # Log only the bot username — never the token value (D-9.16, T-09-02)
+        # Token valid — log only the bot username (D-9.16, T-09-02)
         logger.info("Bridge token validated for @%s, installing", username)
 
-        # Initialise FSM state as unclaimed
-        write_state(
-            module_dir,
-            {
-                "claim_status": "unclaimed",
-                "owner_id": None,
-                "pairing_code_hash": None,
-                "pairing_code_salt": None,
-                "pairing_code_expires": None,
-                "pairing_attempts": 0,
-            },
-        )
+        hub_dir: Path = request.app.state.hub_dir
+        # Module source (manifest.json + install.sh) lives in the codebase.
+        source_dir = module_dir_for("telegram-bridge")
 
-        # Enqueue install job and wait for it to finish before redirecting.
-        # Without this wait, the HX-Redirect races ahead of the background
-        # install task — the config page then 404s because the registry
-        # entry is not yet written.
+        # Run install with token in config. bot_modules.install() writes the
+        # config into the registry entry (D-07); supervisor passes it to
+        # on_start as the `config` kwarg.
         try:
-            job = await start_install("telegram-bridge", module_dir, hub_dir)
+            job = await start_install(
+                "telegram-bridge",
+                source_dir,
+                hub_dir,
+                config={"token": token},
+            )
         except InProgressError:
             return HTMLResponse(
                 '<div class="error" role="alert">'
@@ -133,6 +119,8 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
             )
 
         # Poll job state (max ~20s). Install usually completes in well under 1s.
+        # We must wait so the subsequent HX-Redirect to /modules/.../config
+        # finds the registry entry written.
         for _ in range(200):
             if job.status != "running":
                 break
@@ -144,15 +132,42 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
                 status_code=500,
             )
 
+        # Initialise FSM state (unclaimed) in the dir where the module now
+        # lives — look it up from the registry so we match whatever path
+        # install() stored (codebase path in production, temp in tests).
+        entry = get_entry(hub_dir, "telegram-bridge")
+        state_dir = Path(entry["module_dir"]) if entry else source_dir
+        write_state(
+            state_dir,
+            {
+                "claim_status": "unclaimed",
+                "owner_id": None,
+                "pairing_code_hash": None,
+                "pairing_code_salt": None,
+                "pairing_code_expires": None,
+                "pairing_attempts": 0,
+            },
+        )
+
         return HTMLResponse(
             status_code=200,
             headers={"HX-Redirect": "/modules/telegram-bridge/config"},
         )
 
     def _module_dir() -> Path:
-        """Return the telegram-bridge module directory from app state."""
+        """Return the telegram-bridge module directory.
+
+        Prefers the registry entry's ``module_dir`` (set by install), which
+        matches where install.sh wrote config.json and where on_start stores
+        ``bot_data['module_dir']``. Falls back to the codebase source dir
+        when the module is not yet installed — useful for pre-install state
+        inspection.
+        """
         hub_dir: Path = app.state.hub_dir
-        return hub_dir / "modules" / "telegram-bridge"
+        entry = get_entry(hub_dir, "telegram-bridge")
+        if entry and entry.get("module_dir"):
+            return Path(entry["module_dir"])
+        return module_dir_for("telegram-bridge")
 
     def _ttl_context(state: dict) -> dict:
         """Compute TTL display values for a pending state dict."""

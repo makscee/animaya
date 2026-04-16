@@ -82,16 +82,17 @@ def _register_auth_routes(app: FastAPI) -> None:
                 return templates.TemplateResponse(
                     request, "login.html", {"error": "misconfigured"}, status_code=500
                 )
-            if owner_id is None:
-                return templates.TemplateResponse(
-                    request, "login.html", {"error": "misconfigured"}, status_code=500
-                )
             if not hmac.compare_digest(token, expected):
                 return templates.TemplateResponse(
                     request, "login.html", {"error": "invalid"}, status_code=401
                 )
 
-            cookie = issue_session_cookie(user_id=owner_id, auth_date=int(time.time()))
+            # Open-bootstrap (D-9.12): if no owner has claimed yet, issue a
+            # session cookie with user_id=0 so the operator can reach the
+            # install page. require_owner allows user_id=0 until an owner
+            # claims; after claim, user_id must match owner_id.
+            cookie_user_id = owner_id if owner_id is not None else 0
+            cookie = issue_session_cookie(user_id=cookie_user_id, auth_date=int(time.time()))
             response = RedirectResponse("/", status_code=303)
             response.set_cookie(
                 key=SESSION_COOKIE_NAME,
