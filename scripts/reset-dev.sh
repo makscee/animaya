@@ -22,6 +22,9 @@ echo "[reset-dev] hub_dir    : $HUB_DIR"
 echo "[reset-dev] --> stopping $SERVICE"
 systemctl --user stop "$SERVICE" 2>/dev/null || true
 
+echo "[reset-dev] --> clearing Claude Code SDK session store"
+rm -rf "$HOME/.claude/projects"
+
 echo "[reset-dev] --> restoring BOOTSTRAP.md from git index"
 git -C "$INSTALL_DIR" checkout -- BOOTSTRAP.md 2>/dev/null || true
 
