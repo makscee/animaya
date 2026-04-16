@@ -607,6 +607,75 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await _enqueue_or_run(user_id, update, context, inner)
 
 
+# ── Claim handler (pairing code, group=-2) ─────────────────────────
+
+
+async def _claim_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process incoming 6-digit pairing codes from Telegram to claim ownership.
+
+    Registered at group=-2 so it runs before _owner_gate (group=-1).
+    Raises ApplicationHandlerStop on successful claim to prevent further processing.
+    """
+    if not update.message:
+        return
+    text = (update.message.text or "").strip()
+
+    # Only process if exactly 6 digits
+    if not text.isdigit() or len(text) != 6:
+        return
+
+    module_dir: Path | None = context.bot_data.get("module_dir")
+    if module_dir is None:
+        return
+
+    from bot.modules.telegram_bridge_state import (  # noqa: PLC0415
+        read_state,
+        verify_pairing_code,
+        write_state,
+    )
+
+    state = read_state(module_dir)
+    if state.get("claim_status") != "pending":
+        return
+
+    # Increment attempt count before verification
+    state["pairing_attempts"] = state.get("pairing_attempts", 0) + 1
+    write_state(module_dir, state)
+
+    if not verify_pairing_code(text, state):
+        if state["pairing_attempts"] >= 5:
+            state["claim_status"] = "unclaimed"
+            state["pairing_code_hash"] = None
+            state["pairing_code_salt"] = None
+            state["pairing_code_expires"] = None
+            state["pairing_attempts"] = 0
+            write_state(module_dir, state)
+            await update.message.reply_text(
+                "Too many incorrect attempts. Click Regenerate to get a new code."
+            )
+        else:
+            remaining = 5 - state["pairing_attempts"]
+            await update.message.reply_text(
+                f"Incorrect code. {remaining} attempt(s) remaining."
+            )
+        return
+
+    # Success — claim ownership
+    state.update(
+        {
+            "claim_status": "claimed",
+            "owner_id": update.effective_user.id,
+            "pairing_code_hash": None,
+            "pairing_code_salt": None,
+            "pairing_code_expires": None,
+            "pairing_attempts": 0,
+        }
+    )
+    write_state(module_dir, state)
+    await update.message.reply_text("Ownership claimed. You are the owner of this bot.")
+    raise ApplicationHandlerStop
+
+
 # ── Application builder ─────────────────────────────────────────────
 
 
@@ -672,6 +741,7 @@ def build_app(
     if post_init is not None:
         builder = builder.post_init(post_init)
     app = builder.build()
+    app.add_handler(TypeHandler(Update, _claim_handler), group=-2)
     app.add_handler(TypeHandler(Update, _owner_gate), group=-1)
     app.add_handler(CommandHandler("start", _handle_start))
     # IDEN-04: /identity reconfigure ConversationHandler MUST be registered

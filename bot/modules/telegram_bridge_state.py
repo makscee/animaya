@@ -6,8 +6,13 @@ Token validation calls the Telegram getMe API via httpx (deferred import).
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import logging
+import os
+import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from bot.modules.registry import get_entry
@@ -132,10 +137,116 @@ def get_owner_id(hub_dir: Path) -> int | None:
     return None
 
 
+# ── Pairing code FSM ─────────────────────────────────────────────────────────
+
+
+def generate_pairing_code(module_dir: Path) -> tuple[int, dict]:
+    """Generate a 6-digit pairing code, store HMAC hash in state.json, return plaintext.
+
+    The plaintext code is returned once for display and is NEVER written to disk.
+    Only the HMAC-SHA256 digest (keyed by SESSION_SECRET + per-code salt) is persisted.
+
+    Args:
+        module_dir: Module data directory where state.json is written.
+
+    Returns:
+        ``(code, state)`` where ``code`` is the plaintext integer (100000–999999)
+        and ``state`` is the written state dict (no plaintext code inside).
+    """
+    code = secrets.SystemRandom().randint(100000, 999999)
+    salt = secrets.token_hex(16)
+    key = os.environ.get("SESSION_SECRET", "").encode()
+    digest = hmac.new(key, (salt + str(code)).encode(), hashlib.sha256).hexdigest()
+    expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    state = {
+        "claim_status": "pending",
+        "owner_id": None,
+        "pairing_code_hash": digest,
+        "pairing_code_salt": salt,
+        "pairing_code_expires": expires,
+        "pairing_attempts": 0,
+    }
+    write_state(module_dir, state)
+    return code, state
+
+
+def verify_pairing_code(candidate: str, state: dict) -> bool:
+    """Verify a candidate 6-digit string against the stored HMAC hash.
+
+    Checks TTL expiry and attempt cap before computing the HMAC comparison.
+    Uses ``hmac.compare_digest`` to avoid timing attacks.
+
+    Args:
+        candidate: The plaintext code string submitted by the user.
+        state: Current state dict (read from state.json).
+
+    Returns:
+        ``True`` if the code matches and is within TTL + attempt cap, else ``False``.
+    """
+    # Attempt cap
+    if state.get("pairing_attempts", 0) >= 5:
+        return False
+
+    # TTL check
+    expires_raw = state.get("pairing_code_expires")
+    if not expires_raw:
+        return False
+    try:
+        expires = datetime.fromisoformat(expires_raw)
+    except ValueError:
+        return False
+    if datetime.now(timezone.utc) >= expires:
+        return False
+
+    # HMAC comparison
+    key = os.environ.get("SESSION_SECRET", "").encode()
+    salt = state.get("pairing_code_salt", "")
+    expected = hmac.new(key, (salt + candidate).encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, state.get("pairing_code_hash", ""))
+
+
+def check_expiry(state: dict) -> dict:
+    """Auto-transition expired pending codes to unclaimed state.
+
+    If the code is in ``pending`` status and the TTL has elapsed, transitions
+    ``claim_status`` to ``"unclaimed"`` and clears all pairing fields.
+    The caller is responsible for writing the returned state if it changed.
+
+    Args:
+        state: Current state dict (may be mutated by this function).
+
+    Returns:
+        The (possibly modified) state dict.
+    """
+    if state.get("claim_status") != "pending":
+        return state
+
+    expires_raw = state.get("pairing_code_expires")
+    if not expires_raw:
+        return state
+
+    try:
+        expires = datetime.fromisoformat(expires_raw)
+    except ValueError:
+        return state
+
+    if datetime.now(timezone.utc) >= expires:
+        state["claim_status"] = "unclaimed"
+        state["pairing_code_hash"] = None
+        state["pairing_code_salt"] = None
+        state["pairing_code_expires"] = None
+        state["pairing_attempts"] = 0
+
+    return state
+
+
 __all__ = [
+    "check_expiry",
+    "generate_pairing_code",
     "get_owner_id",
     "read_state",
     "redact_bridge_config",
     "validate_bot_token",
+    "verify_pairing_code",
     "write_state",
 ]

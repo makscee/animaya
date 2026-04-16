@@ -1,15 +1,19 @@
-"""Unit tests for bot.modules.telegram_bridge_state (Phase 9, Plan 01)."""
+"""Unit tests for bot.modules.telegram_bridge_state (Phase 9, Plans 01–02)."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from bot.modules.telegram_bridge_state import (
+    check_expiry,
+    generate_pairing_code,
     read_state,
     redact_bridge_config,
     validate_bot_token,
+    verify_pairing_code,
     write_state,
 )
 
@@ -132,3 +136,93 @@ def test_redact_bridge_config_preserves_other_fields() -> None:
     assert result["config"]["extra"] == "value"
     assert result["other"] == "data"
     assert "token" not in result["config"]
+
+
+# ── Pairing code tests (Plan 02) ──────────────────────────────────────────────
+
+
+def test_generate_pairing_code_hash_only(tmp_path: Path, monkeypatch) -> None:
+    """generate_pairing_code stores HMAC hash only — no plaintext code on disk."""
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    code, state = generate_pairing_code(tmp_path)
+
+    # Plaintext code returned as int
+    assert isinstance(code, int)
+    assert 100000 <= code <= 999999
+
+    # state.json on disk must have hash but no plaintext code
+    on_disk = read_state(tmp_path)
+    assert "pairing_code_hash" in on_disk
+    assert isinstance(on_disk["pairing_code_hash"], str)
+    assert len(on_disk["pairing_code_hash"]) == 64  # SHA-256 hex digest
+    assert on_disk["claim_status"] == "pending"
+    # The plaintext code value should not appear as a string in the state dict values
+    str_code = str(code)
+    for v in on_disk.values():
+        if isinstance(v, str):
+            assert str_code not in v, "plaintext code found in state.json value"
+
+
+def test_verify_pairing_code_success(tmp_path: Path, monkeypatch) -> None:
+    """verify_pairing_code returns True for the correct plaintext code."""
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    code, state = generate_pairing_code(tmp_path)
+    assert verify_pairing_code(str(code), state) is True
+
+
+def test_verify_pairing_code_wrong_code(tmp_path: Path, monkeypatch) -> None:
+    """verify_pairing_code returns False for an incorrect code."""
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    _code, state = generate_pairing_code(tmp_path)
+    assert verify_pairing_code("000000", state) is False
+
+
+def test_verify_pairing_code_expired(tmp_path: Path, monkeypatch) -> None:
+    """verify_pairing_code returns False when TTL has elapsed."""
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    code, state = generate_pairing_code(tmp_path)
+    # Backdate expiry by 1 minute
+    past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    state["pairing_code_expires"] = past
+    assert verify_pairing_code(str(code), state) is False
+
+
+def test_verify_pairing_code_max_attempts(tmp_path: Path, monkeypatch) -> None:
+    """verify_pairing_code returns False when attempt cap (5) is reached."""
+    monkeypatch.setenv("SESSION_SECRET", "test-secret")
+    code, state = generate_pairing_code(tmp_path)
+    state["pairing_attempts"] = 5
+    assert verify_pairing_code(str(code), state) is False
+
+
+def test_check_expiry_transitions_to_unclaimed(tmp_path: Path) -> None:
+    """check_expiry transitions pending state to unclaimed when TTL elapsed."""
+    past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    state = {
+        "claim_status": "pending",
+        "pairing_code_hash": "abc123",
+        "pairing_code_salt": "saltsalt",
+        "pairing_code_expires": past,
+        "pairing_attempts": 2,
+    }
+    result = check_expiry(state)
+    assert result["claim_status"] == "unclaimed"
+    assert result["pairing_code_hash"] is None
+    assert result["pairing_code_salt"] is None
+    assert result["pairing_code_expires"] is None
+    assert result["pairing_attempts"] == 0
+
+
+def test_check_expiry_no_change_when_valid(tmp_path: Path) -> None:
+    """check_expiry leaves pending state unchanged when TTL has not elapsed."""
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    state = {
+        "claim_status": "pending",
+        "pairing_code_hash": "abc123",
+        "pairing_code_salt": "saltsalt",
+        "pairing_code_expires": future,
+        "pairing_attempts": 1,
+    }
+    result = check_expiry(state)
+    assert result["claim_status"] == "pending"
+    assert result["pairing_code_hash"] == "abc123"

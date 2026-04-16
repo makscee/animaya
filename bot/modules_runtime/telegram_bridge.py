@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from bot.modules.context import AppContext
@@ -34,6 +35,13 @@ async def on_start(ctx: AppContext, config: dict[str, Any]) -> Any:
 
     post_init = _make_post_init(ctx)
     tg_app = build_app(token, post_init=post_init)
+
+    # Store module_dir in bot_data so claim handler can read/write state.json.
+    from bot.modules.registry import get_entry  # noqa: PLC0415
+
+    entry = get_entry(ctx.data_path, "telegram-bridge")
+    if entry:
+        tg_app.bot_data["module_dir"] = Path(entry["module_dir"])
 
     # Explicit init/shutdown (Pitfall 1) — do NOT use `async with tg_app:`.
     await tg_app.initialize()
