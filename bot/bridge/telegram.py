@@ -514,6 +514,7 @@ async def _run_claude_and_stream(
         Accumulated reply text, or None if the model returned nothing.
     """
     from bot.claude_query import build_options
+    from bot.modules.telegram_bridge_state import _get_bridge_locale
 
     data_dir = Path(os.environ.get("DATA_PATH", "/data"))
 
@@ -531,10 +532,17 @@ async def _run_claude_and_stream(
 
             _query_fn = _self.query
 
+            try:
+                locale = _get_bridge_locale(data_dir)
+            except Exception:  # noqa: BLE001
+                logger.debug("bridge locale lookup failed; defaulting to en", exc_info=True)
+                locale = "en"
+
             options = build_options(
                 data_dir=data_dir,
                 system_prompt_extra=system_context,
                 cwd=session_dir,
+                locale=locale,
             )
 
             accumulated = ""
