@@ -84,7 +84,12 @@ def build_options(
 
     # Bootstrap injection: inject BOOTSTRAP.md when present (onboarding state)
     bootstrap = _read_bootstrap()
-    if bootstrap:
+    in_bootstrap_mode = bool(bootstrap)
+    if in_bootstrap_mode:
+        logger.info(
+            "BOOTSTRAP.md present — forcing fresh Claude session "
+            "(continue_conversation=False)"
+        )
         parts.append(f"<bootstrap>\n{bootstrap}\n</bootstrap>")
 
     # IDEN-03: identity injection (XML-delimited per D-03)
@@ -123,5 +128,5 @@ def build_options(
             "WebSearch", "WebFetch",
         ],
         permission_mode="acceptEdits",
-        continue_conversation=True,
+        continue_conversation=not in_bootstrap_mode,
     )
