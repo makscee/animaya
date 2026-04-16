@@ -29,7 +29,6 @@ from telegram.ext import (
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
 from bot.events import emit as _emit_event
 from bot.modules.registry import get_entry as _registry_get_entry
-from bot.modules_runtime.identity import build_onboarding_handler
 from bot.modules_runtime.memory import maybe_trigger_consolidation
 
 logger = logging.getLogger(__name__)
@@ -447,12 +446,6 @@ async def _handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not _is_bot_addressed(update, context):
         return
 
-    # IDEN-01 onboarding routing is owned by build_onboarding_handler() —
-    # its MessageHandler entry_point with `_SentinelPresent` filter captures
-    # the first text while `.pending-onboarding` exists and puts the user
-    # INTO the conversation state machine, so subsequent messages flow
-    # through Q1→Q2→Q3 instead of re-triggering Q1 here.
-
     user_id = update.effective_user.id
 
     async def inner(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -740,10 +733,6 @@ def build_app(
     app.add_handler(TypeHandler(Update, _claim_handler), group=-2)
     app.add_handler(TypeHandler(Update, _owner_gate), group=-1)
     app.add_handler(CommandHandler("start", _handle_start))
-    # IDEN-04: /identity reconfigure ConversationHandler MUST be registered
-    # BEFORE the catch-all MessageHandler so /identity is routed correctly
-    # and Q&A state messages stay inside the conversation (Pitfall 8).
-    app.add_handler(build_onboarding_handler())
     app.add_handler(
         MessageHandler(
             (filters.TEXT | filters.VOICE | filters.AUDIO | filters.PHOTO | filters.Document.ALL)
