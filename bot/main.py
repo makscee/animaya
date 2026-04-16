@@ -226,6 +226,9 @@ async def _run(data_path: Path) -> None:
     )
     supervisor = Supervisor()
     dashboard_app.state.supervisor = supervisor
+    # Expose AppContext for dashboard-driven install/uninstall flows that need
+    # to start/stop modules at runtime (supervisor.start_module / stop_module).
+    dashboard_app.state.ctx = ctx
     await supervisor.start_all(ctx)
 
     # ── Step 4: Wait for shutdown signal ─────────────────────────────────────

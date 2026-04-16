@@ -82,6 +82,37 @@ class Supervisor:
                 logger.exception("Supervisor: module %r on_start failed", name)
                 ctx.event_bus("error", "supervisor", f"module.errored {name}")
 
+    async def start_module(self, name: str, ctx: AppContext) -> None:
+        """Start a single installed module by name.
+
+        Used for dashboard-driven install flows where the module was added
+        to the registry after the supervisor already ran ``start_all``.
+        No-op if the module is already running or has no runtime_entry.
+        """
+        if name in self._handles:
+            return  # already running
+        reg = read_registry(ctx.data_path)
+        entry = next(
+            (e for e in reg["modules"] if e.get("name") == name), None
+        )
+        if entry is None:
+            logger.warning("start_module: %r not in registry", name)
+            return
+        runtime_entry: str | None = entry.get("runtime_entry")
+        if not runtime_entry:
+            return  # prompt-only module
+        ctx.event_bus("info", "supervisor", f"module.starting {name}")
+        try:
+            mod = importlib.import_module(runtime_entry)
+            config = _load_module_config(entry)
+            handle = await mod.on_start(ctx, config)
+            self._handles[name] = handle
+            self._runtime_entries[name] = runtime_entry
+            ctx.event_bus("info", "supervisor", f"module.started {name}")
+        except Exception:  # noqa: BLE001
+            logger.exception("Supervisor: module %r on_start failed", name)
+            ctx.event_bus("error", "supervisor", f"module.errored {name}")
+
     # ── Stop ──────────────────────────────────────────────────────────
     async def stop_all(self) -> None:
         """Stop all running modules in reverse registration order.

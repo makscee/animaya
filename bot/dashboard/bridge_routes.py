@@ -149,6 +149,17 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
             },
         )
 
+        # Start the newly-installed module via supervisor. Without this,
+        # polling only begins on next bot restart — the user could generate
+        # a pairing code but the Telegram bot would never receive it.
+        supervisor = getattr(request.app.state, "supervisor", None)
+        ctx_obj = getattr(request.app.state, "ctx", None)
+        if supervisor is not None and ctx_obj is not None:
+            try:
+                await supervisor.start_module("telegram-bridge", ctx_obj)
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed to start telegram-bridge after install")
+
         return HTMLResponse(
             status_code=200,
             headers={"HX-Redirect": "/modules/telegram-bridge/config"},
