@@ -56,7 +56,7 @@ def context():
 async def _fake_query_success(*, prompt, options):
     from claude_code_sdk.types import AssistantMessage, TextBlock
 
-    yield AssistantMessage(content=[TextBlock(text="Привет! Чем занимаешься?")])
+    yield AssistantMessage(content=[TextBlock(text="Привет! Чем занимаешься?")], model="test")
 
 
 async def _fake_query_raise(*, prompt, options):
@@ -141,3 +141,152 @@ class TestProactiveGreeting:
         """_GREET_FALLBACK contains the expected bilingual text."""
         assert "Hi / Привет" in tg_bridge._GREET_FALLBACK
         assert "Animaya" in tg_bridge._GREET_FALLBACK
+
+
+# ── TestStreamBufferReset ────────────────────────────────────────────
+
+
+def _make_fake_status_msg():
+    """Return a minimal fake Telegram message object."""
+    msg = MagicMock()
+    msg.edit_text = AsyncMock()
+    msg.delete = AsyncMock()
+    return msg
+
+
+def _make_fake_chat(status_msg):
+    c = MagicMock()
+    c.id = 99
+    c.type = "private"
+    c.title = None
+    c.send_message = AsyncMock(return_value=status_msg)
+    c.send_action = AsyncMock()
+    return c
+
+
+async def _fake_mixed_stream(*, prompt, options):
+    """Text → ToolUse → Text."""
+    from claude_code_sdk.types import AssistantMessage, TextBlock, ToolUseBlock
+
+    yield AssistantMessage(content=[TextBlock(text="A")], model="test")
+    yield AssistantMessage(
+        content=[ToolUseBlock(id="t1", name="Write", input={"path": "x", "content": "y"})],
+        model="test",
+    )
+    yield AssistantMessage(content=[TextBlock(text="B")], model="test")
+
+
+async def _fake_trailing_tool_stream(*, prompt, options):
+    """Text → ToolUse (no trailing text)."""
+    from claude_code_sdk.types import AssistantMessage, TextBlock, ToolUseBlock
+
+    yield AssistantMessage(content=[TextBlock(text="A")], model="test")
+    yield AssistantMessage(
+        content=[ToolUseBlock(id="t2", name="Write", input={"path": "x", "content": "y"})],
+        model="test",
+    )
+
+
+class TestStreamBufferReset:
+    """Verify that accumulated buffer resets after tool uses."""
+
+    def _patch_infra(self, monkeypatch, tmp_path, fake_query):
+        """Monkeypatch all infra that _run_claude_and_stream touches."""
+        monkeypatch.setenv("DATA_PATH", str(tmp_path))
+        monkeypatch.setattr(tg_bridge, "query", fake_query, raising=False)
+        monkeypatch.setattr(tg_bridge, "_registry_get_entry", lambda *a, **kw: None, raising=False)
+        monkeypatch.setattr(tg_bridge, "_emit_event", lambda *a, **kw: None, raising=False)
+        monkeypatch.setattr(tg_bridge, "_send_referenced_files", AsyncMock(), raising=False)
+
+        # Stub build_options and _get_bridge_locale so no real config is needed
+        import bot.claude_query as cq
+        import bot.modules.telegram_bridge_state as tbs
+
+        monkeypatch.setattr(cq, "build_options", lambda **kw: MagicMock(), raising=False)
+        monkeypatch.setattr(tbs, "_get_bridge_locale", lambda d: "en", raising=False)
+
+    def _make_update(self):
+        """Return a minimal fake Update with async reply_text."""
+        update = MagicMock()
+        update.message = MagicMock()
+        update.message.text = "hi"
+        update.message.caption = None
+        update.message.message_id = 1
+        update.message.reply_text = AsyncMock(return_value=_make_fake_status_msg())
+        return update
+
+    @pytest.mark.asyncio
+    async def test_mixed_stream_no_duplication(self, monkeypatch, tmp_path):
+        """Post-tool text bubble must contain ONLY the post-tool text, not the concatenation."""
+        self._patch_infra(monkeypatch, tmp_path, _fake_mixed_stream)
+
+        status_msg = _make_fake_status_msg()
+        chat = _make_fake_chat(status_msg)
+        update = self._make_update()
+        ctx = MagicMock()
+        ctx.chat_data = {}
+        ctx.bot = MagicMock()
+
+        result = await tg_bridge._run_claude_and_stream(
+            chat,
+            42,
+            ctx,
+            "hi",
+            "",
+            tmp_path,
+            status_msg=status_msg,
+            update=update,
+        )
+
+        # full_response should be "AB"
+        assert result == "AB"
+
+        # Collect all edit_text calls on the original + any new bubbles
+        all_edits: list[str] = []
+        for call in status_msg.edit_text.call_args_list:
+            text_arg = call.args[0] if call.args else call.kwargs.get("text", "")
+            all_edits.append(str(text_arg))
+        for send_call in chat.send_message.call_args_list:
+            nm = send_call.return_value
+            if hasattr(nm, "edit_text"):
+                for call in nm.edit_text.call_args_list:
+                    text_arg = call.args[0] if call.args else call.kwargs.get("text", "")
+                    all_edits.append(str(text_arg))
+
+        # Final rendered text must not duplicate the pre-tool "A"
+        assert all_edits, "Expected at least one edit_text call"
+        last_edit = all_edits[-1]
+        assert "AB" not in last_edit, f"Duplication detected in last edit: {last_edit!r}"
+
+    @pytest.mark.asyncio
+    async def test_trailing_tool_deletes_status_returns_full(self, monkeypatch, tmp_path):
+        """Stream ending with a tool (no trailing text) must delete dangling status_msg
+        and return the pre-tool text as full_response."""
+        self._patch_infra(monkeypatch, tmp_path, _fake_trailing_tool_stream)
+
+        status_msg = _make_fake_status_msg()
+        chat = _make_fake_chat(status_msg)
+        update = self._make_update()
+        ctx = MagicMock()
+        ctx.chat_data = {}
+        ctx.bot = MagicMock()
+
+        result = await tg_bridge._run_claude_and_stream(
+            chat,
+            42,
+            ctx,
+            "hi",
+            "",
+            tmp_path,
+            status_msg=status_msg,
+            update=update,
+        )
+
+        # full_response == "A" (pre-tool text)
+        assert result == "A"
+
+        # The tool-indicator bubble (new status_msg from _on_tool_use) must be deleted.
+        # _on_tool_use creates it via update.message.reply_text; _delete_status then
+        # calls .delete() on that message object.
+        tool_bubble = update.message.reply_text.return_value
+        assert tool_bubble.delete.called, "Expected dangling tool-indicator status_msg to be deleted"

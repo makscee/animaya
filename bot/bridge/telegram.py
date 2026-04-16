@@ -546,6 +546,7 @@ async def _run_claude_and_stream(
             )
 
             accumulated = ""
+            full_response = ""
             tools_used: list[str] = []
             async for message in _query_fn(prompt=envelope, options=options):
                 if message is None:
@@ -554,16 +555,22 @@ async def _run_claude_and_stream(
                     for block in message.content:
                         if isinstance(block, TextBlock):
                             accumulated += block.text
+                            full_response += block.text
                             await _stream_text(stream_state, accumulated)
                         elif isinstance(block, ToolUseBlock):
                             tools_used.append(_format_tool(block.name, block.input))
                             await _on_tool_use(stream_state, block.name, block.input)
+                            accumulated = ""
 
-            if accumulated.strip():
+            if full_response.strip():
                 _stats["messages_sent"] += 1
-                await _finalize_stream(stream_state, accumulated, update, chat=chat)
+                if accumulated.strip():
+                    await _finalize_stream(stream_state, accumulated, update, chat=chat)
+                else:
+                    # Stream ended with trailing tool use — delete dangling indicator bubble.
+                    await _delete_status(stream_state["status_msg"])
                 if update is not None:
-                    await _send_referenced_files(accumulated, update)
+                    await _send_referenced_files(full_response, update)
                     try:
                         _emit_event(
                             "info",
@@ -590,12 +597,14 @@ async def _run_claude_and_stream(
                         text_for_memo = update.message.text or update.message.caption or ""
                         maybe_trigger_consolidation(
                             chat_data=context.chat_data,
-                            conversation_text=f"USER: {text_for_memo}\n\nASSISTANT: {accumulated}",
+                            conversation_text=(
+                                f"USER: {text_for_memo}\n\nASSISTANT: {full_response}"
+                            ),
                             every_n_turns=every_n,
                             model=cons_model,
                             max_lines=max_lines,
                         )
-                return accumulated
+                return full_response
             else:
                 await _delete_status(stream_state["status_msg"])
                 return None
