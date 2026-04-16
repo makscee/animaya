@@ -7,7 +7,8 @@
     <div class="panel-header">Claim Ownership</div>
     <div style="padding: 1rem 1.25rem">
       <p>Send this code to your bot in Telegram:</p>
-      <div class="pairing-code" aria-label="Pairing code: {{ code }}" aria-live="polite">{{ code }}</div>
+      <div class="pairing-code" id="pairing-code" hx-preserve="true"
+           aria-label="Pairing code: {{ code }}" aria-live="polite">{{ code }}</div>
       <div class="progress" style="margin: .5rem 0">
         <div class="progress-bar" id="countdown-bar"
              style="width: {{ pct }}%;{% if ttl_seconds < 120 %} background: var(--warn);{% endif %}"></div>
