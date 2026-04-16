@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 Phase: 09 (install-dialog-owner-claim-fsm) — EXECUTING
 Plan: 1 of 3
 Status: Executing Phase 09
-Last activity: 2026-04-16 - Completed quick task 260416-fzf: redirect stale bootstrap cookie to login instead of 403 after owner claim
+Last activity: 2026-04-16 - Completed quick task 260416-g70: move identity from module to core via BOOTSTRAP.md lifecycle
 
 Progress: [          ] 0%
 
@@ -107,6 +107,7 @@ None — v2.0 roadmap validated with 100% requirement coverage (21/21).
 |---|-------------|------|--------|-----------|
 | 260416-fft | reject pre-claim messages from non-owners by default | 2026-04-16 | c6418ce | [260416-fft-reject-pre-claim-messages-from-non-owner](./quick/260416-fft-reject-pre-claim-messages-from-non-owner/) |
 | 260416-fzf | redirect stale bootstrap cookie to login instead of 403 after owner claim | 2026-04-16 | cf865a1 | [260416-fzf-redirect-stale-bootstrap-cookie-to-login](./quick/260416-fzf-redirect-stale-bootstrap-cookie-to-login/) |
+| 260416-g70 | move identity from module to core via BOOTSTRAP.md lifecycle | 2026-04-16 | 1553983 | [260416-g70-move-identity-from-module-to-core-via-bo](./quick/260416-g70-move-identity-from-module-to-core-via-bo/) |
 
 ### Roadmap Evolution
 
