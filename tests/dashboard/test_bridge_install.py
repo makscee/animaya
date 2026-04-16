@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Iterator
 from unittest.mock import AsyncMock, patch
 
@@ -108,7 +109,7 @@ def test_install_valid_token(
         ),
         patch(
             "bot.dashboard.bridge_routes.start_install",
-            new=AsyncMock(return_value=object()),
+            new=AsyncMock(return_value=SimpleNamespace(status="done", error=None)),
         ),
     ):
         r = auth_client.post(
@@ -176,7 +177,7 @@ def test_install_accepts_form_encoded_body(auth_client, temp_hub_dir: Path) -> N
         new=AsyncMock(return_value=(True, "testbot", None)),
     ), patch(
         "bot.dashboard.bridge_routes.start_install",
-        new=AsyncMock(return_value="job-id"),
+        new=AsyncMock(return_value=SimpleNamespace(status="done", error=None)),
     ):
         r = auth_client.post(
             "/api/modules/telegram-bridge/install",
@@ -491,7 +492,9 @@ def test_token_not_in_logs_after_install(
         ),
         patch(
             "bot.dashboard.bridge_routes.start_install",
-            new=AsyncMock(return_value=object()),
+            new=AsyncMock(
+                return_value=SimpleNamespace(status="done", error=None)
+            ),
         ),
         caplog.at_level(logging.DEBUG),
     ):

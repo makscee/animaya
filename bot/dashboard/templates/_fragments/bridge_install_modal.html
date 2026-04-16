@@ -1,4 +1,4 @@
-<dialog class="modal" open id="bridge-install-modal"
+<dialog class="modal" id="bridge-install-modal"
         onclose="this.remove()">
   <div class="modal-head">
     <h2>Install Telegram Bridge</h2>
@@ -50,3 +50,11 @@
     </button>
   </div>
 </dialog>
+<script>
+  (function () {
+    var d = document.getElementById('bridge-install-modal');
+    if (d && typeof d.showModal === 'function' && !d.open) {
+      d.showModal();
+    }
+  })();
+</script>

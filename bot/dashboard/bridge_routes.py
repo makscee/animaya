@@ -13,6 +13,7 @@ Security:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -117,15 +118,30 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
             },
         )
 
-        # Enqueue install job
+        # Enqueue install job and wait for it to finish before redirecting.
+        # Without this wait, the HX-Redirect races ahead of the background
+        # install task — the config page then 404s because the registry
+        # entry is not yet written.
         try:
-            await start_install("telegram-bridge", module_dir, hub_dir)
+            job = await start_install("telegram-bridge", module_dir, hub_dir)
         except InProgressError:
             return HTMLResponse(
                 '<div class="error" role="alert">'
                 "Another module operation is in progress. Please wait and try again."
                 "</div>",
                 status_code=409,
+            )
+
+        # Poll job state (max ~20s). Install usually completes in well under 1s.
+        for _ in range(200):
+            if job.status != "running":
+                break
+            await asyncio.sleep(0.1)
+        if job.status == "failed":
+            err = (job.error or "unknown error").replace("<", "&lt;").replace(">", "&gt;")
+            return HTMLResponse(
+                f'<div class="error" role="alert">Install failed: {err}</div>',
+                status_code=500,
             )
 
         return HTMLResponse(
