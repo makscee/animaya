@@ -1,3 +1,0 @@
-[    9510ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://animaya-dev:8090/modules:0
-[   40298ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://animaya-dev:8090/api/modules/telegram-bridge/install:0
-[   40299ms] [ERROR] Response Status Error Code 500 from /api/modules/telegram-bridge/install @ https://unpkg.com/htmx.org@2.0.3:0

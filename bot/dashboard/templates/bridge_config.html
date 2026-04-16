@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Telegram Bridge — Animaya{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-header">Telegram Bridge</div>
+  {% include "_fragments/bridge_install_form.html" %}
+  <div style="margin-top:1rem">
+    <a class="btn" href="/modules">Back to modules</a>
+  </div>
+</div>
+{% endblock %}

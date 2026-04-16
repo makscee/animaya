@@ -10,3 +10,9 @@ data/
 *.embeddings.json
 .ruff_cache/
 .pytest_cache/
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+bridge-install-modal.png
+page-*.png
+page-*.yml

@@ -163,14 +163,16 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:
         manifest = validate_manifest(module_dir_for(name))
         schema = manifest.config_schema
         if not schema or not schema.get("properties"):
-            # telegram-bridge: no schema — render install form or "no config" msg
+            # telegram-bridge: no schema — render the bridge config page
+            # (full layout, so direct navigation via HX-Redirect after
+            # install renders with htmx + styles). Phase 9.
             if name == "telegram-bridge":
                 safe_entry = redact_bridge_config(entry)
                 has_token = safe_entry["config"].get("has_token", False)
                 return templates.TemplateResponse(
                     request,
-                    "_fragments/bridge_install_form.html",
-                    {"has_token": has_token, "name": name},
+                    "bridge_config.html",
+                    {"has_token": has_token, "name": name, "nav_active": "modules"},
                 )
             return templates.TemplateResponse(
                 request,
