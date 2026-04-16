@@ -69,9 +69,16 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
         if "application/json" in content_type:
             body = await request.json()
             token: str = (body.get("token") or "").strip()
+            locale: str = (body.get("locale") or "en").strip()
         else:
             form = await request.form()
             token = (form.get("token") or "").strip()
+            locale = (form.get("locale") or "en").strip()
+
+        # Silent fallback for invalid locales — operator-picked values come
+        # from a closed <select>, but clients can POST anything. Refuse to 4xx.
+        if locale not in {"en", "ru"}:
+            locale = "en"
 
         if not token:
             return HTMLResponse(
@@ -108,7 +115,7 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
                 "telegram-bridge",
                 source_dir,
                 hub_dir,
-                config={"token": token},
+                config={"token": token, "locale": locale},
             )
         except InProgressError:
             return HTMLResponse(

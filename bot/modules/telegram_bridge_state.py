@@ -95,7 +95,8 @@ def redact_bridge_config(entry: dict) -> dict:
     """Return a copy of entry with the bridge token stripped from config.
 
     Replaces the ``config`` dict's ``token`` key with ``has_token: bool``.
-    Never mutates the input.
+    Non-secret config keys (e.g. ``locale``) are preserved verbatim so the
+    config page and other UI can display them. Never mutates the input.
 
     Args:
         entry: Module registry entry dict (may contain config.token).
@@ -135,6 +136,32 @@ def get_owner_id(hub_dir: Path) -> int | None:
     if state.get("claim_status") == "claimed":
         return state.get("owner_id")
     return None
+
+
+# ── Locale lookup ────────────────────────────────────────────────────────────
+
+
+def _get_bridge_locale(hub_dir: Path) -> str:
+    """Return the telegram-bridge module's locale, defaulting to ``'en'``.
+
+    Reads ``config.locale`` from the registry entry. Never raises — missing
+    entry, missing config, or an unknown locale all fall back to ``'en'``.
+    Kept together with other state-layer helpers since the registry read
+    pattern mirrors :func:`get_owner_id`.
+
+    Args:
+        hub_dir: Hub data directory (contains registry.json).
+
+    Returns:
+        The persisted locale (``'en'`` or ``'ru'``). Always one of the known
+        values — never an arbitrary string from the registry.
+    """
+    entry = get_entry(hub_dir, "telegram-bridge")
+    if not entry:
+        return "en"
+    cfg = entry.get("config") or {}
+    loc = cfg.get("locale", "en")
+    return loc if loc in {"en", "ru"} else "en"
 
 
 # ── Pairing code FSM ─────────────────────────────────────────────────────────
@@ -241,6 +268,7 @@ def check_expiry(state: dict) -> dict:
 
 
 __all__ = [
+    "_get_bridge_locale",
     "check_expiry",
     "generate_pairing_code",
     "get_owner_id",

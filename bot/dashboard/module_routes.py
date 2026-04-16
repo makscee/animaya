@@ -172,7 +172,12 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:
                 return templates.TemplateResponse(
                     request,
                     "bridge_config.html",
-                    {"has_token": has_token, "name": name, "nav_active": "modules"},
+                    {
+                        "has_token": has_token,
+                        "name": name,
+                        "nav_active": "modules",
+                        "config": safe_entry["config"],
+                    },
                 )
             return templates.TemplateResponse(
                 request,

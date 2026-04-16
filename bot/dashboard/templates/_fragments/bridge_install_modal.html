@@ -34,6 +34,18 @@
       </p>
     </div>
 
+    <div class="field">
+      <label for="locale-input">Assistant language</label>
+      <select id="locale-input" name="locale" class="input">
+        <option value="en" selected>English</option>
+        <option value="ru">Русский</option>
+      </select>
+      <p class="field-help">
+        Your assistant will speak this language from the first message.
+        Change later by reinstalling the bridge.
+      </p>
+    </div>
+
     <div id="status-toast" style="margin-top:.75rem"></div>
   </div>
 
@@ -43,7 +55,7 @@
     </form>
     <button type="button" class="btn btn-success"
             hx-post="/api/modules/telegram-bridge/install"
-            hx-include="[name='token']"
+            hx-include="[name='token'], [name='locale']"
             hx-target="#status-toast"
             hx-swap="innerHTML">
       Install Bridge

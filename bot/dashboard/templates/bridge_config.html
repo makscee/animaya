@@ -3,6 +3,11 @@
 {% block content %}
 <div class="panel">
   <div class="panel-header">Telegram Bridge</div>
+  {% if config and config.locale %}
+    <p class="field-help">
+      Language: {% if config.locale == 'ru' %}Русский{% else %}English{% endif %}
+    </p>
+  {% endif %}
   {% include "_fragments/bridge_install_form.html" %}
   <div style="margin-top:1rem">
     <a class="btn" href="/modules">Back to modules</a>
