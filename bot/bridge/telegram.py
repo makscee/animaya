@@ -28,8 +28,7 @@ from telegram.ext import (
 
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
 from bot.events import emit as _emit_event
-from bot.modules.registry import get_entry as _registry_get_entry
-from bot.modules_runtime.memory import maybe_trigger_consolidation
+from bot.memory.consolidation import maybe_trigger_consolidation
 
 logger = logging.getLogger(__name__)
 
@@ -580,30 +579,18 @@ async def _run_claude_and_stream(
                         )
                     except Exception:  # noqa: BLE001
                         logger.debug("events.emit failed for bridge reply", exc_info=True)
-                    # MEMO-03: post-reply consolidation trigger (fire-and-forget).
-                    try:
-                        mem_entry = _registry_get_entry(data_dir, "memory")
-                    except Exception:
-                        mem_entry = None
-                    if mem_entry is not None:
-                        cfg = (
-                            mem_entry.get("config", {})
-                            if isinstance(mem_entry.get("config"), dict)
-                            else {}
-                        )
-                        every_n = int(cfg.get("consolidation_every_n_turns", 10))
-                        cons_model = cfg.get("consolidation_model", "claude-haiku-4-5")
-                        max_lines = int(cfg.get("core_max_lines", 150))
-                        text_for_memo = update.message.text or update.message.caption or ""
-                        maybe_trigger_consolidation(
-                            chat_data=context.chat_data,
-                            conversation_text=(
-                                f"USER: {text_for_memo}\n\nASSISTANT: {full_response}"
-                            ),
-                            every_n_turns=every_n,
-                            model=cons_model,
-                            max_lines=max_lines,
-                        )
+                    # MEMO-03: post-reply consolidation trigger (fire-and-forget, always on).
+                    text_for_memo = update.message.text or update.message.caption or ""
+                    maybe_trigger_consolidation(
+                        chat_data=context.chat_data,
+                        conversation_text=(
+                            f"USER: {text_for_memo}\n\nASSISTANT: {full_response}"
+                        ),
+                        # Defaults hardcoded after 260416-ncp fold; followup: expose via settings UI.
+                        every_n_turns=10,
+                        model="claude-haiku-4-5",
+                        max_lines=150,
+                    )
                 return full_response
             else:
                 await _delete_status(stream_state["status_msg"])

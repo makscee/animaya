@@ -20,6 +20,7 @@ from bot.modules.registry import (
     get_entry,
     list_installed,
     migrate_bridge_rename,
+    migrate_drop_memory,
     read_registry,
     remove_entry,
     write_registry,
@@ -31,8 +32,11 @@ def migrate_registry(data_path: Path) -> bool:
 
     Currently includes:
     - migrate_bridge_rename: renames 'bridge' → 'telegram-bridge' (D-8.5).
+    - migrate_drop_memory: drops legacy 'memory' entry (260416-ncp fold).
     """
-    return migrate_bridge_rename(data_path)
+    changed_bridge = migrate_bridge_rename(data_path)
+    changed_memory = migrate_drop_memory(data_path)
+    return changed_bridge or changed_memory
 
 
 __all__ = [
@@ -46,6 +50,7 @@ __all__ = [
     "add_entry",
     "remove_entry",
     "migrate_bridge_rename",
+    "migrate_drop_memory",
     "migrate_registry",
     "install",
     "uninstall",

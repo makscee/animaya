@@ -170,3 +170,26 @@ def migrate_bridge_rename(data_path: Path) -> bool:
             "Migrated module 'bridge' -> 'telegram-bridge' (registry + on-disk)"
         )
     return migrated
+
+
+def migrate_drop_memory(data_path: Path) -> bool:
+    """Remove legacy 'memory' registry entry (260416-ncp: memory folded into core).
+
+    One-shot migration. Idempotent: subsequent calls are no-ops once entry is gone.
+
+    Args:
+        data_path: Root data directory (hub_dir containing registry.json).
+
+    Returns:
+        True if an entry was dropped, False if nothing to migrate.
+    """
+    reg = read_registry(data_path)
+    before = len(reg.get("modules", []))
+    reg["modules"] = [e for e in reg["modules"] if e.get("name") != "memory"]
+    if len(reg["modules"]) == before:
+        return False
+    write_registry(data_path, reg)
+    logger.warning(
+        "Migrated: dropped legacy 'memory' module entry (memory is now core)"
+    )
+    return True

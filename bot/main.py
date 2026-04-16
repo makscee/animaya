@@ -32,7 +32,7 @@ from bot.events import emit as _emit
 from bot.events import rotate as rotate_events
 from bot.modules.assembler import assemble_claude_md
 from bot.modules.context import AppContext
-from bot.modules.registry import get_entry, migrate_bridge_rename
+from bot.modules.registry import get_entry, migrate_bridge_rename, migrate_drop_memory
 from bot.modules.supervisor import Supervisor
 
 logging.basicConfig(
@@ -202,6 +202,7 @@ async def _run(data_path: Path) -> None:
 
     # ── Step 2: One-shot migrations + token seed ──────────────────────────────
     migrate_bridge_rename(data_path)           # D-8.5: rename 'bridge' → 'telegram-bridge'
+    migrate_drop_memory(data_path)             # 260416-ncp: memory folded into core
     _seed_telegram_bridge_token(data_path)     # D-8.4: env token → config.json (if needed)
     _seed_owner_from_env(data_path)            # D-9.13: one-shot owner migration from env
 

@@ -1,13 +1,9 @@
-"""Memory module runtime: Haiku consolidation query + post-reply trigger.
+"""Memory consolidation runtime: Haiku consolidation query + post-reply trigger.
 
 Implements MEMO-03 (consolidation) and the post-reply trigger that maintains
 CORE.md. MEMO-04 (system-prompt injection) is handled in bot/claude_query.py
 via _read_for_injection (added in plan 04-01). MEMO-01/02 require no runtime
 code — Claude writes via built-in Write tool; git-versioning commits.
-
-Per MODS-06: this module does NOT import bot.modules_runtime.identity or
-bot.modules_runtime.git_versioning. Cross-module communication happens via
-files under ~/hub/knowledge/.
 """
 from __future__ import annotations
 
