@@ -43,7 +43,7 @@ async def test_run_with_empty_registry_and_no_token_env_succeeds(
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
+
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dash-token")
 
     # Write empty registry so no modules start
@@ -207,7 +207,7 @@ async def test_migrate_bridge_rename_called_during_run(
     """BRDG-01: _run() must call migrate_bridge_rename(data_path) at boot."""
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
+
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dash-token")
 
     migrate_calls = []
@@ -262,7 +262,7 @@ async def test_dashboard_starts_before_supervisor(
     """
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
+
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dash-token")
 
     calls: list[str] = []
@@ -324,7 +324,7 @@ async def test_supervisor_stop_all_before_uvicorn_shutdown(
     """D-8.7: supervisor.stop_all must complete BEFORE server.should_exit is set."""
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
+
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dash-token")
 
     shutdown_calls: list[str] = []

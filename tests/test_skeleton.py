@@ -17,10 +17,9 @@ from bot.main import DEFAULT_DATA_PATH, REQUIRED_ENV_VARS, assemble_claude_md, m
 
 
 def _set_phase5_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set the Phase-5 required env vars (SESSION_SECRET,
-    TELEGRAM_OWNER_ID, DASHBOARD_TOKEN) so main() passes its env-gate."""
+    """Set required env vars (SESSION_SECRET, DASHBOARD_TOKEN) so main() passes its env-gate.
+    TELEGRAM_OWNER_ID is no longer required (CLAIM-04: auth moved to state.json)."""
     monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dashboard-token")
 
 
@@ -239,3 +238,18 @@ class TestTelegramBridgeIntegration:
         assert "assemble_claude_md" in call_order
         assert "supervisor.start_all" in call_order
         assert call_order.index("assemble_claude_md") < call_order.index("supervisor.start_all")
+
+
+# ── CLAIM-04: TELEGRAM_OWNER_ID fully removed from production code ────────────
+
+
+def test_no_telegram_owner_id_in_deps() -> None:
+    """CLAIM-04: TELEGRAM_OWNER_ID env gate fully removed from deps.py."""
+    source = Path("bot/dashboard/deps.py").read_text()
+    assert "TELEGRAM_OWNER_ID" not in source
+
+
+def test_no_telegram_owner_id_in_bridge() -> None:
+    """CLAIM-04: TELEGRAM_OWNER_ID env gate fully removed from telegram.py."""
+    source = Path("bot/bridge/telegram.py").read_text()
+    assert "TELEGRAM_OWNER_ID" not in source

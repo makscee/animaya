@@ -15,7 +15,6 @@ _ALL_REQUIRED = (
     "TELEGRAM_BOT_TOKEN",
     "CLAUDE_CODE_OAUTH_TOKEN",
     "SESSION_SECRET",
-    "TELEGRAM_OWNER_ID",
     "DASHBOARD_TOKEN",
 )
 
@@ -24,7 +23,6 @@ def _set_all_required(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tg-token")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "sess-secret")
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "12345")
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dashboard-token")
 
 
@@ -33,7 +31,6 @@ def _set_all_required(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.parametrize("missing_var", [
     "SESSION_SECRET",
-    "TELEGRAM_OWNER_ID",
     "DASHBOARD_TOKEN",
 ])
 def test_main_validates_new_required_env(
@@ -43,7 +40,8 @@ def test_main_validates_new_required_env(
     tmp_path: Path,
 ) -> None:
     """main() exits 1 with the missing var name mentioned in the log when
-    SESSION_SECRET, TELEGRAM_OWNER_ID, or DASHBOARD_TOKEN is absent."""
+    SESSION_SECRET or DASHBOARD_TOKEN is absent.
+    TELEGRAM_OWNER_ID is no longer required (CLAIM-04: auth moved to state.json)."""
     _set_all_required(monkeypatch)
     monkeypatch.delenv(missing_var, raising=False)
     monkeypatch.setenv("DATA_PATH", str(tmp_path))

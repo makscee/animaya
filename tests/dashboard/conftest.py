@@ -1,4 +1,4 @@
-"""Shared fixtures for dashboard tests (Phase 5)."""
+"""Shared fixtures for dashboard tests (Phase 9, Plan 03)."""
 from __future__ import annotations
 
 import json
@@ -48,10 +48,48 @@ def session_secret(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 @pytest.fixture
-def owner_id(monkeypatch: pytest.MonkeyPatch) -> int:
-    """Set TELEGRAM_OWNER_ID to a known test value (test-only)."""
-    monkeypatch.setenv("TELEGRAM_OWNER_ID", "111222333")
+def claimed_bridge_state(temp_hub_dir: Path) -> int:
+    """Write a claimed state.json for telegram-bridge module (replaces TELEGRAM_OWNER_ID env).
+
+    Creates registry.json entry + module_dir/state.json with claim_status=claimed.
+    Returns the owner_id integer (111222333).
+    """
+    module_dir = temp_hub_dir / "modules" / "telegram-bridge"
+    module_dir.mkdir(parents=True, exist_ok=True)
+
+    state = {
+        "claim_status": "claimed",
+        "owner_id": 111222333,
+        "pairing_code_hash": None,
+        "pairing_code_salt": None,
+        "pairing_code_expires": None,
+        "pairing_attempts": 0,
+    }
+    (module_dir / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+    # Write registry.json with bridge entry so get_owner_id can find it
+    registry = {
+        "modules": [
+            {
+                "name": "telegram-bridge",
+                "module_dir": str(module_dir),
+                "config": {"has_token": True},
+                "version": "1.0.0",
+                "manifest_version": 1,
+                "installed_at": "2026-01-01T00:00:00+00:00",
+                "depends": [],
+            }
+        ]
+    }
+    (temp_hub_dir / "registry.json").write_text(json.dumps(registry, indent=2), encoding="utf-8")
+
     return 111222333
+
+
+@pytest.fixture
+def owner_id(claimed_bridge_state: int) -> int:
+    """Return the claimed owner_id from state.json (replaces TELEGRAM_OWNER_ID env)."""
+    return claimed_bridge_state
 
 
 @pytest.fixture
@@ -82,13 +120,16 @@ def dashboard_token(monkeypatch: pytest.MonkeyPatch) -> str:
 def client(
     temp_hub_dir: Path,
     session_secret: str,  # noqa: ARG001
-    owner_id: int,  # noqa: ARG001
+    owner_id: int,  # noqa: ARG001 — sets up claimed state.json via claimed_bridge_state
     bot_token: str,  # noqa: ARG001
     dashboard_token: str,  # noqa: ARG001
     events_log: Path,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[Any]:
     """FastAPI TestClient bound to an app factory configured for the temp hub_dir.
+
+    The owner_id fixture writes a claimed state.json into temp_hub_dir so
+    require_owner finds the claimed owner_id (111222333) from state.json.
 
     Skips cleanly with a helpful reason until Plan 03 creates `bot.dashboard.app.build_app`.
     """

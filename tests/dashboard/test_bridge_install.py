@@ -259,11 +259,12 @@ def test_claim_status_pending(
 def test_claim_status_claimed(
     auth_client,
     temp_hub_dir: Path,
+    owner_id: int,
 ) -> None:
     """GET claim-status with claimed state returns Revoke Ownership button."""
     _seed_bridge_with_state(
         temp_hub_dir,
-        state={"claim_status": "claimed", "owner_id": 12345},
+        state={"claim_status": "claimed", "owner_id": owner_id},
     )
 
     r = auth_client.get("/api/modules/telegram-bridge/claim-status")
@@ -352,3 +353,107 @@ def test_claim_status_expired_transitions(
     # Should show unclaimed state (no polling trigger)
     assert "Generate Pairing Code" in r.text
     assert 'hx-trigger="every 5s"' not in r.text
+
+
+# ── Plan 03: Revoke, open-bootstrap, auth gate, SEC-01 tests ─────────────────
+
+
+def test_revoke_endpoint(
+    auth_client,
+    temp_hub_dir: Path,
+    owner_id: int,
+) -> None:
+    """POST /revoke with claimed owner → returns unclaimed fragment, state cleared."""
+    from bot.modules.telegram_bridge_state import read_state  # noqa: PLC0415
+
+    module_dir = _seed_bridge_with_state(
+        temp_hub_dir,
+        state={"claim_status": "claimed", "owner_id": owner_id},
+    )
+
+    r = auth_client.post("/api/modules/telegram-bridge/revoke")
+
+    assert r.status_code == 200
+    assert "Generate Pairing Code" in r.text
+
+    state = read_state(module_dir)
+    assert state["claim_status"] == "unclaimed"
+    assert state["owner_id"] is None
+
+
+def test_open_bootstrap_no_owner(
+    temp_hub_dir: Path,
+    session_secret: str,  # noqa: ARG001
+    events_log: Path,  # noqa: ARG001
+) -> None:
+    """GET protected route with no owner claimed → 200 open access (D-9.12)."""
+    from tests.dashboard._helpers import build_client  # noqa: PLC0415
+
+    # temp_hub_dir has empty registry → get_owner_id returns None → open access
+    with build_client(temp_hub_dir, follow_redirects=False) as tc:
+        r = tc.get("/")
+    assert r.status_code == 200
+
+
+def test_auth_gate_with_owner_no_cookie(
+    temp_hub_dir: Path,
+    session_secret: str,  # noqa: ARG001
+    owner_id: int,  # noqa: ARG001 — sets up claimed state.json
+    events_log: Path,  # noqa: ARG001
+) -> None:
+    """GET protected route with claimed owner + no cookie → 302 redirect to /login."""
+    from tests.dashboard._helpers import build_client  # noqa: PLC0415
+
+    with build_client(temp_hub_dir, follow_redirects=False) as tc:
+        r = tc.get("/")
+    assert r.status_code == 302
+    assert r.headers.get("location") == "/login"
+
+
+def test_auth_gate_with_owner_wrong_cookie(
+    temp_hub_dir: Path,
+    session_secret: str,  # noqa: ARG001
+    owner_id: int,  # noqa: ARG001 — sets up claimed state.json
+    events_log: Path,  # noqa: ARG001
+) -> None:
+    """GET protected route with claimed owner + wrong user_id cookie → 403."""
+    from bot.dashboard.auth import SESSION_COOKIE_NAME, issue_session_cookie  # noqa: PLC0415
+    from tests.dashboard._helpers import build_client  # noqa: PLC0415
+
+    wrong_cookie = issue_session_cookie(user_id=999)
+    with build_client(temp_hub_dir, follow_redirects=False) as tc:
+        tc.cookies.set(SESSION_COOKIE_NAME, wrong_cookie)
+        r = tc.get("/")
+    assert r.status_code == 403
+
+
+def test_token_not_in_logs_after_install(
+    auth_client,
+    temp_hub_dir: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """SEC-01: raw token value must NOT appear in any log record after install."""
+    import logging  # noqa: PLC0415
+
+    secret_token = "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ_secret"
+
+    with (
+        patch(
+            "bot.dashboard.bridge_routes.validate_bot_token",
+            new=AsyncMock(return_value=(True, "testbot", None)),
+        ),
+        patch(
+            "bot.dashboard.bridge_routes.start_install",
+            new=AsyncMock(return_value=object()),
+        ),
+        caplog.at_level(logging.DEBUG),
+    ):
+        auth_client.post(
+            "/api/modules/telegram-bridge/install",
+            json={"token": secret_token},
+        )
+
+    for record in caplog.records:
+        assert secret_token not in record.getMessage(), (
+            f"Token found in log record: {record.getMessage()}"
+        )

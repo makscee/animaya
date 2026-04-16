@@ -6,6 +6,7 @@ Retained: session cookie round-trip, require_owner FastAPI dependency.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -13,11 +14,15 @@ from fastapi.testclient import TestClient
 
 
 # ── Stub app ──────────────────────────────────────────────────────────
-def _stub_app() -> FastAPI:
-    """Tiny FastAPI app that exercises require_owner."""
+def _stub_app(hub_dir: Path) -> FastAPI:
+    """Tiny FastAPI app that exercises require_owner.
+
+    Sets app.state.hub_dir so require_owner can read state.json.
+    """
     from bot.dashboard.deps import require_owner
 
     app = FastAPI()
+    app.state.hub_dir = hub_dir
 
     @app.get("/who")
     def who(uid: int = Depends(require_owner)) -> dict[str, int]:
@@ -92,9 +97,10 @@ def test_clear_session_cookie_kwargs_returns_expected_keys(session_secret: str) 
 
 # ── require_owner FastAPI dependency ─────────────────────────────────
 def test_require_owner_no_cookie_redirects(
-    session_secret: str, owner_id: int
+    session_secret: str, owner_id: int, temp_hub_dir: Path
 ) -> None:
-    app = _stub_app()
+    """No cookie + claimed owner → redirect to /login."""
+    app = _stub_app(temp_hub_dir)
     client = TestClient(app, follow_redirects=False)
     r = client.get("/who")
     assert r.status_code == 302
@@ -102,9 +108,10 @@ def test_require_owner_no_cookie_redirects(
 
 
 def test_require_owner_bad_cookie_redirects(
-    session_secret: str, owner_id: int
+    session_secret: str, owner_id: int, temp_hub_dir: Path
 ) -> None:
-    app = _stub_app()
+    """Invalid cookie value + claimed owner → redirect to /login."""
+    app = _stub_app(temp_hub_dir)
     client = TestClient(app, follow_redirects=False)
     r = client.get("/who", cookies={"animaya_session": "not-a-real-token"})
     assert r.status_code == 302
@@ -112,25 +119,39 @@ def test_require_owner_bad_cookie_redirects(
 
 
 def test_require_owner_valid_non_owner_403(
-    session_secret: str, owner_id: int
+    session_secret: str, owner_id: int, temp_hub_dir: Path
 ) -> None:
+    """Valid cookie for wrong user_id + claimed owner → 403."""
     from bot.dashboard.auth import issue_session_cookie
 
     cookie = issue_session_cookie(999, 1700000000, "abcd")  # not owner_id
-    app = _stub_app()
+    app = _stub_app(temp_hub_dir)
     client = TestClient(app, follow_redirects=False)
     r = client.get("/who", cookies={"animaya_session": cookie})
     assert r.status_code == 403
 
 
 def test_require_owner_valid_owner_passes(
-    session_secret: str, owner_id: int
+    session_secret: str, owner_id: int, temp_hub_dir: Path
 ) -> None:
+    """Valid cookie matching state.json owner_id → 200."""
     from bot.dashboard.auth import issue_session_cookie
 
     cookie = issue_session_cookie(owner_id, 1700000000, "abcd")
-    app = _stub_app()
+    app = _stub_app(temp_hub_dir)
     client = TestClient(app, follow_redirects=False)
     r = client.get("/who", cookies={"animaya_session": cookie})
     assert r.status_code == 200
     assert r.json() == {"user_id": owner_id}
+
+
+def test_require_owner_open_bootstrap_no_owner(
+    session_secret: str, temp_hub_dir: Path
+) -> None:
+    """No owner claimed (no state.json) → open access returns 0."""
+    # temp_hub_dir has empty registry.json by default (no bridge entry)
+    app = _stub_app(temp_hub_dir)
+    client = TestClient(app, follow_redirects=False)
+    r = client.get("/who")
+    assert r.status_code == 200
+    assert r.json() == {"user_id": 0}
