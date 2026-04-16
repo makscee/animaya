@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 Phase: 09 (install-dialog-owner-claim-fsm) — EXECUTING
 Plan: 1 of 3
 Status: Executing Phase 09
-Last activity: 2026-04-15 -- Phase 09 execution started
+Last activity: 2026-04-16 - Completed quick task 260416-fft: reject pre-claim messages from non-owners by default
 
 Progress: [          ] 0%
 
@@ -100,6 +100,12 @@ All v1.0 decisions logged in PROJECT.md Key Decisions table. v2.0 carries them f
 ### Blockers/Concerns
 
 None — v2.0 roadmap validated with 100% requirement coverage (21/21).
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260416-fft | reject pre-claim messages from non-owners by default | 2026-04-16 | c6418ce | [260416-fft-reject-pre-claim-messages-from-non-owner](./quick/260416-fft-reject-pre-claim-messages-from-non-owner/) |
 
 ### Roadmap Evolution
 
