@@ -158,6 +158,7 @@ def test_main_spawns_uvicorn_task(
     mock_supervisor.stop_all = AsyncMock()
     monkeypatch.setattr("bot.main.Supervisor", lambda: mock_supervisor)
     monkeypatch.setattr("bot.main.migrate_bridge_rename", lambda *a: False)
+    monkeypatch.setattr("bot.main.migrate_drop_memory", lambda *a: False)
 
     # Patch asyncio.Event to auto-set after tasks scheduled
     class _AutoSetEvent(asyncio.Event):

@@ -139,6 +139,7 @@ class TestTelegramBridgeIntegration:
             patch("bot.main.asyncio.Event", _AutoSetEvent),
             patch("bot.main.Supervisor") as MockSupervisor,
             patch("bot.main.migrate_bridge_rename", return_value=False),
+            patch("bot.main.migrate_drop_memory", return_value=False),
         ):
             mock_sup = MockSupervisor.return_value
             mock_sup.start_all = AsyncMock()
@@ -178,6 +179,7 @@ class TestTelegramBridgeIntegration:
             patch("bot.main.asyncio.Event", _AutoSetEvent),
             patch("bot.main.Supervisor") as MockSupervisor,
             patch("bot.main.migrate_bridge_rename", return_value=False),
+            patch("bot.main.migrate_drop_memory", return_value=False),
         ):
             mock_sup = MockSupervisor.return_value
             mock_sup.start_all = AsyncMock()
@@ -229,6 +231,7 @@ class TestTelegramBridgeIntegration:
             patch("bot.main.asyncio.Event", _AutoSetEvent),
             patch("bot.main.Supervisor") as MockSupervisor,
             patch("bot.main.migrate_bridge_rename", return_value=False),
+            patch("bot.main.migrate_drop_memory", return_value=False),
         ):
             mock_sup = MockSupervisor.return_value
             mock_sup.start_all = _track_start_all

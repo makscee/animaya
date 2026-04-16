@@ -61,6 +61,7 @@ async def test_run_with_empty_registry_and_no_token_env_succeeds(
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", return_value=False),
+        patch("bot.main.migrate_drop_memory", return_value=False),
         patch("bot.main.Supervisor") as MockSupervisor,
     ):
         mock_sup_instance = MockSupervisor.return_value
@@ -204,16 +205,21 @@ def test_no_bridge_telegram_import_in_main_py() -> None:
 async def test_migrate_bridge_rename_called_during_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """BRDG-01: _run() must call migrate_bridge_rename(data_path) at boot."""
+    """BRDG-01 + 260416-ncp: _run() must call both migrations at boot."""
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "test-oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
 
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dash-token")
 
     migrate_calls = []
+    memory_migrate_calls = []
 
     def _capture_migrate(data_path):
         migrate_calls.append(data_path)
+        return False
+
+    def _capture_memory_migrate(data_path):
+        memory_migrate_calls.append(data_path)
         return False
 
     mock_server = MagicMock()
@@ -226,6 +232,7 @@ async def test_migrate_bridge_rename_called_during_run(
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", side_effect=_capture_migrate),
+        patch("bot.main.migrate_drop_memory", side_effect=_capture_memory_migrate),
         patch("bot.main.Supervisor") as MockSupervisor,
     ):
         mock_sup = MockSupervisor.return_value
@@ -248,6 +255,8 @@ async def test_migrate_bridge_rename_called_during_run(
 
     assert len(migrate_calls) == 1, "migrate_bridge_rename must be called exactly once"
     assert migrate_calls[0] == tmp_path
+    assert len(memory_migrate_calls) == 1, "migrate_drop_memory must be called exactly once"
+    assert memory_migrate_calls[0] == tmp_path
 
 
 # ── Test 7: Dashboard uvicorn task created BEFORE supervisor.start_all ───────
@@ -285,6 +294,7 @@ async def test_dashboard_starts_before_supervisor(
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", return_value=False),
+        patch("bot.main.migrate_drop_memory", return_value=False),
         patch("bot.main.asyncio.create_task", side_effect=_tracking_create_task),
         patch("bot.main.Supervisor") as MockSupervisor,
     ):
@@ -353,6 +363,7 @@ async def test_supervisor_stop_all_before_uvicorn_shutdown(
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", return_value=False),
+        patch("bot.main.migrate_drop_memory", return_value=False),
         patch("bot.main.Supervisor") as MockSupervisor,
     ):
         async def _stop_all():

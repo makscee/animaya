@@ -586,7 +586,8 @@ async def _run_claude_and_stream(
                         conversation_text=(
                             f"USER: {text_for_memo}\n\nASSISTANT: {full_response}"
                         ),
-                        # Defaults hardcoded after 260416-ncp fold; followup: expose via settings UI.
+                        # Defaults hardcoded after 260416-ncp fold;
+                        # followup: expose via settings UI.
                         every_n_turns=10,
                         model="claude-haiku-4-5",
                         max_lines=150,

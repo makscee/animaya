@@ -1,39 +1,24 @@
-"""Memory module tests (MEMO-01..04)."""
+"""Memory tests (MEMO-02..04) — memory is core after 260416-ncp fold."""
 from __future__ import annotations
 
-import os
 import subprocess
-from pathlib import Path
 
 import pytest
 
-from bot.modules_runtime import memory as mem_rt
+from bot.memory import consolidation as mem_rt
 from bot.modules_runtime.git_versioning import commit_if_changed
 
 
-class TestMemoryInstall:
-    def test_install_creates_memory_dir_with_core_md(self, tmp_path):
-        hub_animaya = tmp_path / "hub" / "knowledge" / "animaya"
-        hub_animaya.mkdir(parents=True)
-        module_dir = Path(__file__).parent.parent.parent / "modules" / "memory"
-        env = {
-            **os.environ,
-            "ANIMAYA_MODULE_DIR": str(module_dir),
-            "ANIMAYA_HUB_DIR": str(hub_animaya),
-            "ANIMAYA_CONFIG_JSON": "{}",
-        }
-        subprocess.run(
-            ["bash", str(module_dir / "install.sh")],
-            cwd=str(module_dir),
-            env=env,
-            check=True,
-            capture_output=True,
-            text=True,
+class TestMemoryImportSurface:
+    def test_consolidation_importable_from_core_path(self):
+        from bot.memory.consolidation import (  # noqa: F401,PLC0415
+            consolidate_memory,
+            maybe_trigger_consolidation,
         )
-        mem = tmp_path / "hub" / "knowledge" / "memory"
-        assert (mem / "CORE.md").is_file()
-        assert (mem / "README.md").is_file()
-        assert "# Core Memory" in (mem / "CORE.md").read_text()
+
+    def test_old_module_runtime_path_gone(self):
+        with pytest.raises(ImportError):
+            import bot.modules_runtime.memory  # noqa: F401,PLC0415
 
 
 class TestMemoryPersist:

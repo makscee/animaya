@@ -93,7 +93,7 @@ Optional:
 
 **Animaya v2**
 
-A modular AI assistant platform that installs on top of a Claude Box (LXC with Claude Code). Users get a Telegram bridge to Claude Code plus a web dashboard, then add capabilities through installable/uninstallable modules (identity, memory, git versioning, etc.). Part of the Voidnet ecosystem — users provision Claude Boxes through Voidnet, then install Animaya via its web interface.
+A modular AI assistant platform that installs on top of a Claude Box (LXC with Claude Code). Users get a Telegram bridge to Claude Code plus a web dashboard, then add capabilities through installable/uninstallable modules (voice, image-gen, self-dev, spaces, etc.) — identity and memory are core platform features, not modules. Part of the Voidnet ecosystem — users provision Claude Boxes through Voidnet, then install Animaya via its web interface.
 
 **Core Value:** Any user can spin up a personal AI assistant by installing Animaya on their Claude Box, then customize it module-by-module — each module is self-contained, configurable, and reversible.
 
