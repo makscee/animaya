@@ -7,7 +7,7 @@
     {% if error == "invalid" %}
       <div class="error">Invalid token.</div>
     {% elif error == "misconfigured" %}
-      <div class="error">Dashboard misconfigured — DASHBOARD_TOKEN or TELEGRAM_OWNER_ID missing.</div>
+      <div class="error">Dashboard misconfigured — DASHBOARD_TOKEN not set or no owner has claimed the bot yet.</div>
     {% elif error %}
       <div class="error">Sign-in failed.</div>
     {% endif %}

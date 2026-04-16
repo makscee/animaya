@@ -244,5 +244,36 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
             },
         )
 
+    @app.post(
+        "/api/modules/telegram-bridge/revoke",
+        response_class=HTMLResponse,
+        name="bridge_revoke",
+    )
+    async def revoke_ownership(
+        request: Request,
+        _uid: int = Depends(require_owner),
+    ) -> HTMLResponse:
+        """Revoke ownership — transition claimed → unclaimed state.
+
+        Only the current owner (validated via session cookie by require_owner) can revoke.
+        Clears all ownership and pairing fields in state.json (T-09-12 mitigation).
+        Returns the unclaimed HTMX fragment so the UI updates immediately.
+        """
+        module_dir = _module_dir()
+        state = read_state(module_dir)
+        state["claim_status"] = "unclaimed"
+        state["owner_id"] = None
+        state["pairing_code_hash"] = None
+        state["pairing_code_salt"] = None
+        state["pairing_code_expires"] = None
+        state["pairing_attempts"] = 0
+        write_state(module_dir, state)
+        logger.info("Bridge ownership revoked — returned to unclaimed state")
+        return templates.TemplateResponse(
+            request,
+            "_fragments/pairing_code_unclaimed.html",
+            {},
+        )
+
 
 __all__ = ["register"]

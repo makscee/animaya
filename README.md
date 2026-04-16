@@ -30,7 +30,6 @@ this port.
 | Var | How to obtain |
 |-----|---------------|
 | `SESSION_SECRET` | `openssl rand -hex 32` — generate once, keep stable |
-| `TELEGRAM_OWNER_ID` | Message `@userinfobot` on Telegram |
 | `TELEGRAM_BOT_USERNAME` | Your bot's username without the `@` |
 
 ### Optional

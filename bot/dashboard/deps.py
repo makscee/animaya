@@ -1,56 +1,51 @@
-"""FastAPI dependencies for the Animaya dashboard (Phase 5).
+"""FastAPI dependencies for the Animaya dashboard (Phase 9, Plan 03).
 
-Central owner-only guard. Every protected route declares
-``user_id: int = Depends(require_owner)`` — returns the verified
-Telegram user_id or raises 302→/login (unauthenticated) or 403
-(authenticated but not in TELEGRAM_OWNER_ID allowlist per D-01).
+Central owner-only guard using state.json-backed auth.
+Every protected route declares ``user_id: int = Depends(require_owner)``.
+
+Open-bootstrap behaviour (D-9.12):
+  - When no owner has claimed (state.json missing or claim_status != "claimed"),
+    returns 0 to allow open access for initial setup.
+  - When an owner has claimed, validates session cookie against state.json owner_id.
 """
 from __future__ import annotations
 
-import os
-from typing import Iterable
+from pathlib import Path
 
-from fastapi import Cookie, HTTPException
+from fastapi import Cookie, HTTPException, Request
 
 from bot.dashboard.auth import SESSION_COOKIE_NAME, read_session_cookie
-
-
-def _owner_ids() -> set[int]:
-    """Parse TELEGRAM_OWNER_ID (comma-separated) into a set of ints.
-
-    Empty / unset env → empty set → everyone is denied (fail closed, T-05-02-06).
-    """
-    raw = os.environ.get("TELEGRAM_OWNER_ID", "")
-    out: set[int] = set()
-    for part in raw.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        try:
-            out.add(int(part))
-        except ValueError:
-            continue
-    return out
+from bot.modules.telegram_bridge_state import get_owner_id as _get_owner_id
 
 
 def require_owner(
+    request: Request,
     session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
 ) -> int:
-    """Return verified owner user_id or redirect/forbid.
+    """Return verified owner user_id, or allow open access if no owner claimed.
+
+    When no owner has claimed (state.json missing or claim_status != "claimed"),
+    returns 0 to allow open access for initial setup (D-9.12).
+
+    When an owner has claimed, validates session cookie against state.json owner_id.
 
     Raises:
         HTTPException(302, Location=/login): no cookie or invalid cookie.
-        HTTPException(403): cookie valid, but user_id not in TELEGRAM_OWNER_ID.
+        HTTPException(403): cookie valid, but user_id does not match state.json owner_id.
     """
+    hub_dir: Path = request.app.state.hub_dir
+    owner_id = _get_owner_id(hub_dir)
+    if owner_id is None:
+        return 0  # open access -- no owner claimed yet
+
     if session is None:
         raise HTTPException(status_code=302, headers={"Location": "/login"})
     payload = read_session_cookie(session)
     if payload is None:
         raise HTTPException(status_code=302, headers={"Location": "/login"})
     user_id = int(payload["user_id"])
-    allowlist: Iterable[int] = _owner_ids()
-    if user_id not in allowlist:
-        raise HTTPException(status_code=403, detail="not an owner")
+    if user_id != owner_id:
+        raise HTTPException(status_code=403, detail="Not the bot owner")
     return user_id
 
 

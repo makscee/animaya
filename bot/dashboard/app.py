@@ -4,8 +4,8 @@ Exposes ``build_app(hub_dir)`` returning a configured FastAPI instance with
 ``/``, ``/login``, ``/logout`` and ``/static/*`` mounted.
 
 Auth: token-based via ``DASHBOARD_TOKEN`` env var. ``GET /login?token=<value>``
-issues a session cookie for the first ID in ``TELEGRAM_OWNER_ID`` and redirects
-to ``/``.
+issues a session cookie for the claimed owner_id (read from state.json) and
+redirects to ``/``.
 """
 from __future__ import annotations
 
@@ -26,7 +26,8 @@ from bot.dashboard.auth import (
     issue_session_cookie,
     set_session_cookie_kwargs,
 )
-from bot.dashboard.deps import _owner_ids, require_owner
+from bot.dashboard.deps import require_owner
+from bot.modules.telegram_bridge_state import get_owner_id as _get_bridge_owner_id
 
 logger = logging.getLogger(__name__)
 
@@ -73,14 +74,15 @@ def _register_auth_routes(app: FastAPI) -> None:
         error: str | None = None,
     ) -> HTMLResponse | RedirectResponse:
         expected = os.environ.get("DASHBOARD_TOKEN", "")
-        owners = sorted(_owner_ids())
+        hub_dir: Path = request.app.state.hub_dir
+        owner_id = _get_bridge_owner_id(hub_dir)
 
         if token is not None:
             if not expected:
                 return templates.TemplateResponse(
                     request, "login.html", {"error": "misconfigured"}, status_code=500
                 )
-            if not owners:
+            if owner_id is None:
                 return templates.TemplateResponse(
                     request, "login.html", {"error": "misconfigured"}, status_code=500
                 )
@@ -89,7 +91,7 @@ def _register_auth_routes(app: FastAPI) -> None:
                     request, "login.html", {"error": "invalid"}, status_code=401
                 )
 
-            cookie = issue_session_cookie(user_id=owners[0], auth_date=int(time.time()))
+            cookie = issue_session_cookie(user_id=owner_id, auth_date=int(time.time()))
             response = RedirectResponse("/", status_code=303)
             response.set_cookie(
                 key=SESSION_COOKIE_NAME,

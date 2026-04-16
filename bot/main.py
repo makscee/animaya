@@ -44,7 +44,6 @@ logger = logging.getLogger(__name__)
 REQUIRED_ENV_VARS: tuple[str, ...] = (
     "CLAUDE_CODE_OAUTH_TOKEN",
     "SESSION_SECRET",
-    "TELEGRAM_OWNER_ID",
     "DASHBOARD_TOKEN",
 )
 DEFAULT_DATA_PATH = str(Path.home() / "hub" / "knowledge" / "animaya")
@@ -97,6 +96,46 @@ def _seed_telegram_bridge_token(data_path: Path) -> None:
         "TELEGRAM_BOT_TOKEN seeded into %s; env var is deprecated and "
         "will be ignored after config.json has a token.",
         config_path,
+    )
+
+
+# ── Owner seed migration (D-9.13) ───────────────────────────────────────────
+
+def _seed_owner_from_env(hub_dir: Path) -> None:
+    """One-shot migration: if TELEGRAM_OWNER_ID is set and bridge has no owner, seed it.
+
+    Runs at boot after token seed. If TELEGRAM_OWNER_ID is present in the environment
+    and the bridge module exists but has no claimed owner, writes owner_id into state.json
+    so existing deployments keep working without requiring a re-claim via pairing code.
+    After seed, the env var is ignored on all subsequent boots.
+
+    Security: skips if owner already exists (T-09-13 — existing owner never overwritten).
+
+    Args:
+        hub_dir: Hub data directory (contains registry.json).
+    """
+    raw = os.environ.get("TELEGRAM_OWNER_ID", "").strip()
+    if not raw:
+        return
+    try:
+        owner_id = int(raw.split(",")[0].strip())
+    except ValueError:
+        return
+    from bot.modules.telegram_bridge_state import get_owner_id, read_state, write_state  # noqa: PLC0415
+    from bot.modules.registry import get_entry  # noqa: PLC0415
+    entry = get_entry(hub_dir, "telegram-bridge")
+    if entry is None:
+        return
+    module_dir = Path(entry["module_dir"])
+    if get_owner_id(hub_dir) is not None:
+        return  # already has an owner — never overwrite
+    state = read_state(module_dir)
+    state["claim_status"] = "claimed"
+    state["owner_id"] = owner_id
+    write_state(module_dir, state)
+    logger.warning(
+        "TELEGRAM_OWNER_ID seeded owner_id=%d into state.json; env var is deprecated",
+        owner_id,
     )
 
 
@@ -164,6 +203,7 @@ async def _run(data_path: Path) -> None:
     # ── Step 2: One-shot migrations + token seed ──────────────────────────────
     migrate_bridge_rename(data_path)           # D-8.5: rename 'bridge' → 'telegram-bridge'
     _seed_telegram_bridge_token(data_path)     # D-8.4: env token → config.json (if needed)
+    _seed_owner_from_env(data_path)            # D-9.13: one-shot owner migration from env
 
     # ── Step 3: Build context + start supervisor ──────────────────────────────
     stop_event = asyncio.Event()
@@ -209,5 +249,6 @@ __all__ = [
     "main",
     "rotate_events",
     "_run",
+    "_seed_owner_from_env",
     "_seed_telegram_bridge_token",
 ]

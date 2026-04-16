@@ -695,37 +695,25 @@ async def _error_handler(update, context):
         logger.debug("events.emit failed for bridge error", exc_info=True)
 
 
-def _parse_owner_ids() -> set[int]:
-    """Parse TELEGRAM_OWNER_ID (comma-separated) into a set of ints.
-
-    Empty / unset → empty set. Callers treat empty set as "gate disabled".
-    """
-    raw = os.environ.get("TELEGRAM_OWNER_ID", "")
-    out: set[int] = set()
-    for part in raw.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        try:
-            out.add(int(part))
-        except ValueError:
-            continue
-    return out
-
-
 async def _owner_gate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Drop updates from non-owner users when TELEGRAM_OWNER_ID is set.
+    """Drop updates from non-owner users when an owner has claimed the bot.
 
     Registered at group=-1 so it runs before any other handler. Raises
     ApplicationHandlerStop to short-circuit the handler chain.
+    Reads claim_status from state.json — no env var dependency.
     """
-    owners = _parse_owner_ids()
-    if not owners:
-        return  # gate disabled — bot is open (dev / pre-claim)
-    user = update.effective_user
-    if user is None or user.id not in owners:
-        uid = user.id if user is not None else None
-        logger.info("bridge: dropping update from non-owner user_id=%s", uid)
+    module_dir = context.bot_data.get("module_dir")
+    if module_dir is None:
+        return  # no module dir = can't check ownership, allow through
+    from bot.modules.telegram_bridge_state import read_state  # noqa: PLC0415
+    state = read_state(module_dir)
+    if state.get("claim_status") != "claimed":
+        return  # not claimed yet = allow all messages through
+    owner_id = state.get("owner_id")
+    if owner_id is None:
+        return
+    user_id = update.effective_user.id if update.effective_user else None
+    if user_id != owner_id:
         raise ApplicationHandlerStop
 
 
