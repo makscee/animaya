@@ -87,7 +87,7 @@ def test_set_session_cookie_kwargs_returns_expected_keys(session_secret: str) ->
 
 
 def test_clear_session_cookie_kwargs_returns_expected_keys(session_secret: str) -> None:
-    from bot.dashboard.auth import clear_session_cookie_kwargs, SESSION_COOKIE_NAME
+    from bot.dashboard.auth import SESSION_COOKIE_NAME, clear_session_cookie_kwargs
 
     kwargs = clear_session_cookie_kwargs()
     assert kwargs.get("key") == SESSION_COOKIE_NAME
@@ -129,6 +129,22 @@ def test_require_owner_valid_non_owner_403(
     client = TestClient(app, follow_redirects=False)
     r = client.get("/who", cookies={"animaya_session": cookie})
     assert r.status_code == 403
+
+
+def test_require_owner_stale_bootstrap_cookie_redirects(
+    session_secret: str, owner_id: int, temp_hub_dir: Path
+) -> None:
+    """Valid cookie with user_id=0 (pre-claim bootstrap sentinel) + claimed owner
+    → 302 redirect to /login, NOT 403. Operator re-hits pairing token URL to mint
+    a fresh cookie bound to real owner_id."""
+    from bot.dashboard.auth import issue_session_cookie
+
+    cookie = issue_session_cookie(0, 1700000000, "bootstrap")
+    app = _stub_app(temp_hub_dir)
+    client = TestClient(app, follow_redirects=False)
+    r = client.get("/who", cookies={"animaya_session": cookie})
+    assert r.status_code == 302
+    assert r.headers["location"] == "/login"
 
 
 def test_require_owner_valid_owner_passes(

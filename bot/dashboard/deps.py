@@ -30,8 +30,10 @@ def require_owner(
     When an owner has claimed, validates session cookie against state.json owner_id.
 
     Raises:
-        HTTPException(302, Location=/login): no cookie or invalid cookie.
-        HTTPException(403): cookie valid, but user_id does not match state.json owner_id.
+        HTTPException(302, Location=/login): no cookie, invalid cookie, OR stale
+            open-bootstrap cookie (user_id=0) after owner has claimed.
+        HTTPException(403): cookie valid with user_id != 0 but does not match
+            state.json owner_id (real non-owner).
     """
     hub_dir: Path = request.app.state.hub_dir
     owner_id = _get_owner_id(hub_dir)
@@ -44,6 +46,11 @@ def require_owner(
     if payload is None:
         raise HTTPException(status_code=302, headers={"Location": "/login"})
     user_id = int(payload["user_id"])
+    if user_id == 0:
+        # Stale open-bootstrap cookie (minted pre-claim). Not an attacker —
+        # legitimate operator whose session predates the owner claim. Send them
+        # back through /login to mint a fresh cookie bound to the real owner_id.
+        raise HTTPException(status_code=302, headers={"Location": "/login"})
     if user_id != owner_id:
         raise HTTPException(status_code=403, detail="Not the bot owner")
     return user_id
