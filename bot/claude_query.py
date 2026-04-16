@@ -12,6 +12,40 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# ── Locale substitutions ─────────────────────────────────────────────
+LOCALE_SUBSTITUTIONS = {
+    "en": {
+        "locale": "English",
+        "locale_example": (
+            "Example of your opening message: "
+            '"Hi. I think we\'ve just met — I don\'t know you at all yet. '
+            'Tell me — who are you?"'
+        ),
+    },
+    "ru": {
+        "locale": "русском",
+        "locale_example": (
+            "Пример твоего первого сообщения: "
+            '"Привет. Кажется, мы с тобой только что познакомились — '
+            'я тебя совсем не знаю. Расскажи, кто ты?"'
+        ),
+    },
+}
+
+
+def _substitute_bootstrap(text: str, locale: str | None) -> str:
+    """Substitute {locale} and {locale_example} placeholders in BOOTSTRAP text.
+
+    Unknown/None locale → fall back to 'en'. Safe against stray braces
+    in the source text: only the two known placeholder keys are
+    replaced (no str.format — which would KeyError on unrelated braces).
+    """
+    sub = LOCALE_SUBSTITUTIONS.get(locale or "en", LOCALE_SUBSTITUTIONS["en"])
+    for key, value in sub.items():
+        text = text.replace("{" + key + "}", value)
+    return text
+
+
 # ── Identity / memory injection ─────────────────────────────────────
 HUB_KNOWLEDGE: Path = Path.home() / "hub" / "knowledge"
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent
@@ -62,6 +96,7 @@ def build_options(
     data_dir: Path | None = None,
     system_prompt_extra: str = "",
     cwd: Path | str | None = None,
+    locale: str | None = None,
 ):
     """Build ClaudeCodeOptions with standard configuration.
 
@@ -69,6 +104,8 @@ def build_options(
         data_dir: Bot data directory (default: DATA_PATH env var).
         system_prompt_extra: Additional context to prepend (e.g., chat type, user info).
         cwd: Working directory for Claude (default: data_dir).
+        locale: Locale for BOOTSTRAP.md substitution (e.g. 'en', 'ru'). None or unknown
+            falls back to 'en'.
 
     Returns:
         ClaudeCodeOptions ready for query().
@@ -90,6 +127,7 @@ def build_options(
             "BOOTSTRAP.md present — forcing fresh Claude session "
             "(continue_conversation=False)"
         )
+        bootstrap = _substitute_bootstrap(bootstrap, locale)
         parts.append(f"<bootstrap>\n{bootstrap}\n</bootstrap>")
 
     # IDEN-03: identity injection (XML-delimited per D-03)
