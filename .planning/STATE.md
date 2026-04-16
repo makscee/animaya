@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 Phase: 09 (install-dialog-owner-claim-fsm) — EXECUTING
 Plan: 1 of 3
 Status: Executing Phase 09
-Last activity: 2026-04-16 - Completed quick task 260416-mme: reset stream buffer after tool uses to avoid duplicated text
+Last activity: 2026-04-16 - Completed quick task 260416-ncp: fold memory module into core platform
 
 Progress: [          ] 0%
 
@@ -113,6 +113,7 @@ None — v2.0 roadmap validated with 100% requirement coverage (21/21).
 | 260416-lht | locale at bridge creation drives bootstrap language + who-are-you/who-am-i opening script | 2026-04-16 | 049833d | [260416-lht-locale-at-bridge-creation-drives-bootstr](./quick/260416-lht-locale-at-bridge-creation-drives-bootstr/) |
 | 260416-m58 | revert continue_conversation gate + reset-dev wipes ~/.claude/projects | 2026-04-16 | b5b413e | [260416-m58-revert-continue-conversation-gate-reset-](./quick/260416-m58-revert-continue-conversation-gate-reset-/) |
 | 260416-mme | reset stream buffer after tool uses to avoid duplicated text | 2026-04-16 | 22dd767 | [260416-mme-reset-accumulated-buffer-after-tool-uses](./quick/260416-mme-reset-accumulated-buffer-after-tool-uses/) |
+| 260416-ncp | fold memory module into core platform | 2026-04-16 | 429c974 | [260416-ncp-fold-memory-module-into-core-platform](./quick/260416-ncp-fold-memory-module-into-core-platform/) |
 
 ### Roadmap Evolution
 
