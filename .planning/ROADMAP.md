@@ -68,8 +68,8 @@ Plans:
   5. Bot token is never returned by `GET /api/modules` (only `has_token: bool`) and never appears in any log line — verified by grepping logs after a full install + claim + uninstall cycle; `TELEGRAM_OWNER_ID` env gate is removed from the codebase.
 **Plans:** 3 plans
 Plans:
-- [ ] 09-01-PLAN.md — Phase 8 fixes, bridge state module, token install endpoint with getMe validation, token redaction
-- [ ] 09-02-PLAN.md — Pairing code FSM (HMAC generation/verification), HTMX polling templates, bridge claim handler
+- [x] 09-01-PLAN.md — Phase 8 fixes, bridge state module, token install endpoint with getMe validation, token redaction
+- [x] 09-02-PLAN.md — Pairing code FSM (HMAC generation/verification), HTMX polling templates, bridge claim handler
 - [ ] 09-03-PLAN.md — Auth migration (TELEGRAM_OWNER_ID removal), revoke endpoint, test fixture migration, human verification
 
 #### Phase 10: Bridge Settings, Non-Owner Access & Tool-Use Display
