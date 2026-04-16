@@ -1,0 +1,7 @@
+<div id="claim-status">
+  <p class="field-help">No owner claimed. Generate a pairing code and send it to your bot in Telegram.</p>
+  <button class="btn btn-success"
+          hx-post="/api/modules/telegram-bridge/generate-code"
+          hx-target="#claim-status"
+          hx-swap="outerHTML">Generate Pairing Code</button>
+</div>

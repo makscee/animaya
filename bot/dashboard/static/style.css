@@ -354,3 +354,18 @@ pre.job-log {
 /* ── Status toast slot ──────────────────────────────────────── */
 #status-toast:empty { display: none; }
 #status-toast { margin-bottom: 1rem; }
+
+/* -- Pairing code display (Phase 9) ---------------------------------------- */
+.pairing-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: .3em;
+  padding: .75rem 1rem;
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  text-align: center;
+  user-select: all;
+}

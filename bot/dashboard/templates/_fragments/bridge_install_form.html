@@ -2,6 +2,13 @@
 <div class="field-help" style="margin-bottom:1rem">
   Bridge token is configured. To replace it, submit a new token below.
 </div>
+<div id="claim-status"
+     hx-get="/api/modules/telegram-bridge/claim-status"
+     hx-trigger="load"
+     hx-target="#claim-status"
+     hx-swap="outerHTML">
+  Loading claim status&hellip;
+</div>
 {% endif %}
 <div class="field">
   <label for="token-input">Bot Token</label>

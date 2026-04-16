@@ -193,3 +193,162 @@ def test_token_redacted_in_module_config(
 
     assert r.status_code == 200
     assert "MY_RAW_TOKEN_VALUE" not in r.text
+
+
+# ── FSM claim-status endpoint tests (Plan 02) ─────────────────────────────────
+
+
+def _seed_bridge_with_state(
+    hub_dir: Path,
+    *,
+    state: dict,
+    token: str = "SECRET_TOKEN",
+) -> Path:
+    """Seed bridge module in registry + write state.json."""
+    from bot.modules.telegram_bridge_state import write_state  # noqa: PLC0415
+
+    module_dir = _seed_bridge_module_in_registry(hub_dir, token=token)
+    write_state(module_dir, state)
+    return module_dir
+
+
+def test_claim_status_unclaimed(
+    auth_client,
+    temp_hub_dir: Path,
+) -> None:
+    """GET claim-status with unclaimed state returns Generate Pairing Code button."""
+    _seed_bridge_with_state(
+        temp_hub_dir,
+        state={"claim_status": "unclaimed", "owner_id": None},
+    )
+
+    r = auth_client.get("/api/modules/telegram-bridge/claim-status")
+
+    assert r.status_code == 200
+    assert "Generate Pairing Code" in r.text
+
+
+def test_claim_status_pending(
+    auth_client,
+    temp_hub_dir: Path,
+    session_secret: str,  # noqa: ARG001
+) -> None:
+    """GET claim-status with pending state returns polling fragment."""
+    from datetime import datetime, timedelta, timezone  # noqa: PLC0415
+
+    future = (datetime.now(timezone.utc) + timedelta(minutes=8)).isoformat()
+    _seed_bridge_with_state(
+        temp_hub_dir,
+        state={
+            "claim_status": "pending",
+            "owner_id": None,
+            "pairing_code_hash": "abc123",
+            "pairing_code_salt": "salt",
+            "pairing_code_expires": future,
+            "pairing_attempts": 1,
+        },
+    )
+
+    r = auth_client.get("/api/modules/telegram-bridge/claim-status")
+
+    assert r.status_code == 200
+    assert 'hx-trigger="every 5s"' in r.text
+    assert "attempt(s) remaining" in r.text
+
+
+def test_claim_status_claimed(
+    auth_client,
+    temp_hub_dir: Path,
+) -> None:
+    """GET claim-status with claimed state returns Revoke Ownership button."""
+    _seed_bridge_with_state(
+        temp_hub_dir,
+        state={"claim_status": "claimed", "owner_id": 12345},
+    )
+
+    r = auth_client.get("/api/modules/telegram-bridge/claim-status")
+
+    assert r.status_code == 200
+    assert "Ownership claimed" in r.text
+    assert "Revoke Ownership" in r.text
+
+
+def test_generate_code(
+    auth_client,
+    temp_hub_dir: Path,
+    session_secret: str,  # noqa: ARG001
+) -> None:
+    """POST generate-code returns 6-digit code and polling trigger."""
+    _seed_bridge_with_state(
+        temp_hub_dir,
+        state={"claim_status": "unclaimed", "owner_id": None},
+    )
+
+    r = auth_client.post("/api/modules/telegram-bridge/generate-code")
+
+    assert r.status_code == 200
+    assert 'hx-trigger="every 5s"' in r.text
+    # Body should contain a 6-digit code
+    import re  # noqa: PLC0415
+
+    codes = re.findall(r"\b\d{6}\b", r.text)
+    assert len(codes) >= 1
+
+
+def test_regenerate_code(
+    auth_client,
+    temp_hub_dir: Path,
+    session_secret: str,  # noqa: ARG001
+) -> None:
+    """POST regenerate returns a new code and polling trigger."""
+    from datetime import datetime, timedelta, timezone  # noqa: PLC0415
+
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    _seed_bridge_with_state(
+        temp_hub_dir,
+        state={
+            "claim_status": "pending",
+            "owner_id": None,
+            "pairing_code_hash": "oldhash",
+            "pairing_code_salt": "oldsalt",
+            "pairing_code_expires": future,
+            "pairing_attempts": 0,
+        },
+    )
+
+    r = auth_client.post("/api/modules/telegram-bridge/regenerate")
+
+    assert r.status_code == 200
+    assert 'hx-trigger="every 5s"' in r.text
+    import re  # noqa: PLC0415
+
+    codes = re.findall(r"\b\d{6}\b", r.text)
+    assert len(codes) >= 1
+
+
+def test_claim_status_expired_transitions(
+    auth_client,
+    temp_hub_dir: Path,
+) -> None:
+    """GET claim-status with expired pending state auto-transitions to unclaimed."""
+    from datetime import datetime, timedelta, timezone  # noqa: PLC0415
+
+    past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    _seed_bridge_with_state(
+        temp_hub_dir,
+        state={
+            "claim_status": "pending",
+            "owner_id": None,
+            "pairing_code_hash": "abc123",
+            "pairing_code_salt": "salt",
+            "pairing_code_expires": past,
+            "pairing_attempts": 2,
+        },
+    )
+
+    r = auth_client.get("/api/modules/telegram-bridge/claim-status")
+
+    assert r.status_code == 200
+    # Should show unclaimed state (no polling trigger)
+    assert "Generate Pairing Code" in r.text
+    assert 'hx-trigger="every 5s"' not in r.text

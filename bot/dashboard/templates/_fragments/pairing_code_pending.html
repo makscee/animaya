@@ -1,0 +1,22 @@
+<div id="claim-status"
+     hx-get="/api/modules/telegram-bridge/claim-status"
+     hx-trigger="every 5s"
+     hx-target="#claim-status"
+     hx-swap="outerHTML">
+  <div class="panel">
+    <div class="panel-header">Claim Ownership</div>
+    <div style="padding: 1rem 1.25rem">
+      <p>Send this code to your bot in Telegram:</p>
+      <div class="pairing-code" aria-label="Pairing code: {{ code }}" aria-live="polite">{{ code }}</div>
+      <div class="progress" style="margin: .5rem 0">
+        <div class="progress-bar" id="countdown-bar"
+             style="width: {{ pct }}%;{% if ttl_seconds < 120 %} background: var(--warn);{% endif %}"></div>
+      </div>
+      <p class="field-help" aria-live="polite">Expires in {{ ttl_display }}&nbsp;&middot;&nbsp;{{ attempts_remaining }} attempt(s) remaining</p>
+      <button class="btn"
+              hx-post="/api/modules/telegram-bridge/regenerate"
+              hx-target="#claim-status"
+              hx-swap="outerHTML">Regenerate Code</button>
+    </div>
+  </div>
+</div>

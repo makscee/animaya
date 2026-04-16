@@ -1,6 +1,6 @@
-"""Bridge-specific dashboard routes (Phase 9, Plan 01).
+"""Bridge-specific dashboard routes (Phase 9, Plans 01–02).
 
-Mounts token install endpoint and claim-status stub.
+Mounts token install endpoint and pairing-code FSM endpoints.
 Auto-registered by :func:`bot.dashboard.app.build_app` via
 ``_register_bridge_routes_if_available`` hook; exports a single
 :func:`register(app, templates)` entry point.
@@ -9,11 +9,13 @@ Security:
     - Token is validated via Telegram getMe before any state is written (T-09-03)
     - Token value is never logged; only the bot username is logged (T-09-02)
     - Token input field uses type="password" to prevent shoulder surfing (T-09-05)
+    - Pairing code plaintext never stored to disk; only returned once in HTTP response (T-09-08)
 """
 from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
@@ -22,7 +24,13 @@ from fastapi.templating import Jinja2Templates
 
 from bot.dashboard.deps import require_owner
 from bot.dashboard.jobs import InProgressError, start_install
-from bot.modules.telegram_bridge_state import validate_bot_token, write_state
+from bot.modules.telegram_bridge_state import (
+    check_expiry,
+    generate_pairing_code,
+    read_state,
+    validate_bot_token,
+    write_state,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -117,17 +125,124 @@ def register(app: FastAPI, templates: Jinja2Templates) -> None:  # noqa: ARG001
             headers={"HX-Redirect": "/modules/telegram-bridge/config"},
         )
 
+    def _module_dir() -> Path:
+        """Return the telegram-bridge module directory from app state."""
+        hub_dir: Path = app.state.hub_dir
+        return hub_dir / "modules" / "telegram-bridge"
+
+    def _ttl_context(state: dict) -> dict:
+        """Compute TTL display values for a pending state dict."""
+        expires = datetime.fromisoformat(state["pairing_code_expires"])
+        remaining = max(0, int((expires - datetime.now(timezone.utc)).total_seconds()))
+        pct = max(0, int(remaining / 600 * 100))
+        minutes, seconds = divmod(remaining, 60)
+        ttl_display = f"{minutes}m {seconds}s"
+        attempts_remaining = max(0, 5 - state.get("pairing_attempts", 0))
+        return {
+            "pct": pct,
+            "ttl_display": ttl_display,
+            "ttl_seconds": remaining,
+            "attempts_remaining": attempts_remaining,
+        }
+
     @app.get(
         "/api/modules/telegram-bridge/claim-status",
         response_class=HTMLResponse,
         name="bridge_claim_status",
     )
     async def claim_status(
-        request: Request,  # noqa: ARG001
+        request: Request,
         _uid: int = Depends(require_owner),
     ) -> HTMLResponse:
-        """Stub: FSM claim-status endpoint (Plan 02 fills in logic)."""
-        return HTMLResponse("")
+        """Return the appropriate pairing-code HTMX fragment for the current FSM state.
+
+        Polls at this endpoint every 5 seconds when in pending state.
+        Auto-transitions expired pending codes to unclaimed.
+        Plaintext code is never returned here — only dashes (T-09-08).
+        """
+        module_dir = _module_dir()
+        state = read_state(module_dir)
+        original_status = state.get("claim_status")
+        state = check_expiry(state)
+        if state.get("claim_status") != original_status:
+            write_state(module_dir, state)
+
+        claim_status_value = state.get("claim_status", "unclaimed")
+
+        if claim_status_value == "pending":
+            ctx = _ttl_context(state)
+            return templates.TemplateResponse(
+                request,
+                "_fragments/pairing_code_pending.html",
+                {"code": "------", **ctx},
+            )
+        elif claim_status_value == "claimed":
+            return templates.TemplateResponse(
+                request,
+                "_fragments/pairing_code_claimed.html",
+                {},
+            )
+        else:
+            return templates.TemplateResponse(
+                request,
+                "_fragments/pairing_code_unclaimed.html",
+                {},
+            )
+
+    @app.post(
+        "/api/modules/telegram-bridge/generate-code",
+        response_class=HTMLResponse,
+        name="bridge_generate_code",
+    )
+    async def generate_code(
+        request: Request,
+        _uid: int = Depends(require_owner),
+    ) -> HTMLResponse:
+        """Generate a fresh pairing code and return the pending fragment.
+
+        The plaintext code is shown once in the HTTP response (acceptable per T-09-08).
+        The code is never written to disk — only the HMAC hash is stored.
+        """
+        module_dir = _module_dir()
+        code, _state = generate_pairing_code(module_dir)
+        return templates.TemplateResponse(
+            request,
+            "_fragments/pairing_code_pending.html",
+            {
+                "code": str(code),
+                "pct": 100,
+                "ttl_display": "10m 0s",
+                "ttl_seconds": 600,
+                "attempts_remaining": 5,
+            },
+        )
+
+    @app.post(
+        "/api/modules/telegram-bridge/regenerate",
+        response_class=HTMLResponse,
+        name="bridge_regenerate",
+    )
+    async def regenerate_code(
+        request: Request,
+        _uid: int = Depends(require_owner),
+    ) -> HTMLResponse:
+        """Regenerate a pairing code (same as generate-code; old code is overwritten).
+
+        The plaintext code is shown once in the HTTP response (acceptable per T-09-08).
+        """
+        module_dir = _module_dir()
+        code, _state = generate_pairing_code(module_dir)
+        return templates.TemplateResponse(
+            request,
+            "_fragments/pairing_code_pending.html",
+            {
+                "code": str(code),
+                "pct": 100,
+                "ttl_display": "10m 0s",
+                "ttl_seconds": 600,
+                "attempts_remaining": 5,
+            },
+        )
 
 
 __all__ = ["register"]
