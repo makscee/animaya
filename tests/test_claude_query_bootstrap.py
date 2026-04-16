@@ -1,15 +1,9 @@
-"""Tests for BOOTSTRAP.md injection into system prompt and continue_conversation flag.
+"""Tests for BOOTSTRAP.md injection into system prompt.
 
 Test 1: When BOOTSTRAP.md exists at repo root, build_options() injects its
         content wrapped in <bootstrap>...</bootstrap> into system_prompt.
 Test 2: When BOOTSTRAP.md is absent (or empty), build_options() emits no
         <bootstrap> tag in system_prompt.
-Test 5: When BOOTSTRAP.md exists (non-empty), build_options() returns
-        continue_conversation=False (fresh SDK session).
-Test 6: When BOOTSTRAP.md is absent, build_options() returns
-        continue_conversation=True (normal resume).
-Test 7: When BOOTSTRAP.md exists but is empty, build_options() returns
-        continue_conversation=True (matches no-injection semantics).
 
 Locale substitution tests (Task 1 additions):
 - en/ru substitution, None→en fallback, unknown→en fallback, absent BOOTSTRAP.md is noop,
@@ -100,59 +94,6 @@ def test_bootstrap_tag_escape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         "Raw </bootstrap> inside content must be escaped"
     )
     assert "&lt;/bootstrap&gt;" in prompt, "Escaped form of </bootstrap> must appear in content"
-
-
-# ── Helpers for continue_conversation tests ──────────────────────────
-
-
-def _options(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, locale: str | None = None):
-    """Build options with REPO_ROOT monkeypatched to tmp_path, return full ClaudeCodeOptions."""
-    monkeypatch.setattr(cq, "REPO_ROOT", tmp_path)
-    monkeypatch.setattr(cq, "HUB_KNOWLEDGE", tmp_path / "hub" / "knowledge")
-    monkeypatch.setenv("DATA_PATH", str(tmp_path / "data"))
-    return cq.build_options(locale=locale)
-
-
-# ── continue_conversation tests ───────────────────────────────────────
-
-
-def test_continue_conversation_false_when_bootstrap_present(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """When BOOTSTRAP.md exists with content, continue_conversation must be False."""
-    (tmp_path / "BOOTSTRAP.md").write_text("# Bootstrap\n\nSome content.\n", encoding="utf-8")
-
-    opts = _options(tmp_path, monkeypatch)
-
-    assert opts.continue_conversation is False, (
-        "Expected continue_conversation=False when BOOTSTRAP.md is present and non-empty"
-    )
-
-
-def test_continue_conversation_true_when_bootstrap_absent(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """When BOOTSTRAP.md does not exist, continue_conversation must be True."""
-    assert not (tmp_path / "BOOTSTRAP.md").exists()
-
-    opts = _options(tmp_path, monkeypatch)
-
-    assert opts.continue_conversation is True, (
-        "Expected continue_conversation=True when BOOTSTRAP.md is absent"
-    )
-
-
-def test_continue_conversation_true_when_bootstrap_empty(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """When BOOTSTRAP.md exists but is empty, continue_conversation must be True."""
-    (tmp_path / "BOOTSTRAP.md").write_text("", encoding="utf-8")
-
-    opts = _options(tmp_path, monkeypatch)
-
-    assert opts.continue_conversation is True, (
-        "Expected continue_conversation=True when BOOTSTRAP.md is empty (no-injection semantics)"
-    )
 
 
 # ── Locale substitution tests ─────────────────────────────────────────

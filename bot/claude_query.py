@@ -121,12 +121,7 @@ def build_options(
 
     # Bootstrap injection: inject BOOTSTRAP.md when present (onboarding state)
     bootstrap = _read_bootstrap()
-    in_bootstrap_mode = bool(bootstrap)
-    if in_bootstrap_mode:
-        logger.info(
-            "BOOTSTRAP.md present — forcing fresh Claude session "
-            "(continue_conversation=False)"
-        )
+    if bootstrap:
         bootstrap = _substitute_bootstrap(bootstrap, locale)
         parts.append(f"<bootstrap>\n{bootstrap}\n</bootstrap>")
 
@@ -166,5 +161,5 @@ def build_options(
             "WebSearch", "WebFetch",
         ],
         permission_mode="acceptEdits",
-        continue_conversation=not in_bootstrap_mode,
+        continue_conversation=True,
     )
