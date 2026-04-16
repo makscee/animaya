@@ -164,6 +164,27 @@ def test_install_empty_token(auth_client) -> None:
     assert "HX-Redirect" not in r.headers
 
 
+def test_generic_install_intercepts_bridge_and_shows_token_form(auth_client) -> None:
+    """POST /modules/telegram-bridge/install (the generic module-card Install button)
+    must NOT start an install job — it must render the token input form instead.
+
+    Regression: Phase 9 added a token-validating install endpoint under
+    /api/modules/telegram-bridge/install, but the module-card Install button
+    hits the generic /modules/{name}/install route. Without this interception
+    the bridge would install with an empty config, bypassing getMe validation.
+    """
+    r = auth_client.post("/modules/telegram-bridge/install")
+
+    assert r.status_code == 200
+    # Renders the install form fragment
+    assert 'name="token"' in r.text
+    assert 'type="password"' in r.text
+    # Form submits to the TOKEN-VALIDATING endpoint, not the generic one
+    assert 'hx-post="/api/modules/telegram-bridge/install"' in r.text
+    # Must NOT have triggered a start_install job (no running module_card)
+    assert "module_card_running" not in r.text
+
+
 # ── Token redaction tests ─────────────────────────────────────────────────────
 
 
