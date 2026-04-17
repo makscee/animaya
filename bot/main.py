@@ -21,13 +21,16 @@ import asyncio
 import json
 import logging
 import os
+import shutil
 import signal
+import subprocess
 import sys
 from pathlib import Path
 
 import uvicorn
 
 from bot.dashboard.app import build_app as build_dashboard_app
+from bot.engine import http as engine_http
 from bot.events import emit as _emit
 from bot.events import rotate as rotate_events
 from bot.modules.assembler import assemble_claude_md
@@ -45,6 +48,9 @@ REQUIRED_ENV_VARS: tuple[str, ...] = (
     "CLAUDE_CODE_OAUTH_TOKEN",
     "SESSION_SECRET",
     "DASHBOARD_TOKEN",
+    # Phase 13: next-auth JWT signing secret for the new Next.js dashboard.
+    # `openssl rand -base64 32`.
+    "AUTH_SECRET",
 )
 DEFAULT_DATA_PATH = str(Path.home() / "hub" / "knowledge" / "animaya")
 
@@ -121,8 +127,12 @@ def _seed_owner_from_env(hub_dir: Path) -> None:
         owner_id = int(raw.split(",")[0].strip())
     except ValueError:
         return
-    from bot.modules.telegram_bridge_state import get_owner_id, read_state, write_state  # noqa: PLC0415
     from bot.modules.registry import get_entry  # noqa: PLC0415
+    from bot.modules.telegram_bridge_state import (  # noqa: PLC0415
+        get_owner_id,
+        read_state,
+        write_state,
+    )
     entry = get_entry(hub_dir, "telegram-bridge")
     if entry is None:
         return
@@ -147,6 +157,44 @@ def _event_bus(level: str, source: str, message: str) -> None:
         _emit(level, source, message)
     except Exception:  # noqa: BLE001
         logger.debug("event_bus emit failed (level=%s source=%s)", level, source)
+
+
+# ── Next.js dashboard subprocess (Phase 13) ─────────────────────────────────
+
+def _start_dashboard() -> subprocess.Popen | None:
+    """Launch the Next.js dashboard via `bun run start` in a subprocess.
+
+    D-02 / D-04: Next.js owns the public HTTP surface on port 8090
+    (`next start -p 8090 -H 127.0.0.1`). Returns None when Bun or the
+    built artifact is unavailable so local dev (before `bun run build`)
+    still boots — a warning is logged.
+
+    Environment passthrough:
+        ANIMAYA_ENGINE_URL → http://127.0.0.1:${ANIMAYA_ENGINE_PORT:-8091}
+            Consumed by dashboard/lib/engine.server.ts (Plan 13-02).
+    """
+    bun = shutil.which("bun")
+    cwd = str(Path(__file__).resolve().parent.parent / "dashboard")
+    if bun is None or not (Path(cwd) / ".next").is_dir():
+        logger.warning("dashboard not built; skipping Next.js launch (cwd=%s)", cwd)
+        return None
+    env = os.environ.copy()
+    engine_port = env.get("ANIMAYA_ENGINE_PORT", "8091")
+    env.setdefault("ANIMAYA_ENGINE_URL", f"http://127.0.0.1:{engine_port}")
+    logger.info("Starting Next.js dashboard via `bun run start` (cwd=%s)", cwd)
+    return subprocess.Popen([bun, "run", "start"], cwd=cwd, env=env)
+
+
+def _stop_dashboard(proc: subprocess.Popen | None) -> None:
+    """Gracefully stop the Next.js subprocess; fall back to kill on timeout."""
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        logger.warning("Next.js dashboard did not terminate in 10s; killing")
+        proc.kill()
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────
@@ -185,20 +233,25 @@ async def _run(data_path: Path) -> None:
     Dashboard starts before supervisor so a tokenless/bridgeless boot still
     brings the dashboard up (SC#1).
     """
-    # ── Step 1: Build + start dashboard ──────────────────────────────────────
-    dashboard_app = build_dashboard_app(hub_dir=data_path)
-    dashboard_host = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
+    # ── Step 1: Build + start engine (Python) + Next.js dashboard subprocess ──
+    # Phase 13: FastAPI is demoted to a loopback-only engine (D-01/D-03).
+    # Next.js owns the public HTTP surface on port 8090.
+    dashboard_app = build_dashboard_app(hub_dir=data_path)  # still used for AppContext
+    engine_host = engine_http.get_host()            # hardcoded 127.0.0.1 (T-13-31)
+    engine_port = engine_http.get_port()            # ANIMAYA_ENGINE_PORT, default 8091
     config = uvicorn.Config(
-        dashboard_app,
-        host=dashboard_host,
-        port=int(os.environ.get("DASHBOARD_PORT", "8090")),
-        proxy_headers=True,
-        forwarded_allow_ips=os.environ.get("DASHBOARD_FORWARDED_ALLOW_IPS", "127.0.0.1"),
+        engine_http.app,
+        host=engine_host,
+        port=engine_port,
+        proxy_headers=False,
         log_level="info",
     )
     server = uvicorn.Server(config)
     uvicorn_task = asyncio.create_task(server.serve(), name="uvicorn")
-    logger.info("Dashboard serving at http://%s:%s", dashboard_host, config.port)
+    logger.info("Engine serving at http://%s:%s (loopback only)", engine_host, engine_port)
+
+    # Launch Next.js dashboard as a child process (D-02).
+    dashboard_proc = _start_dashboard()
 
     # ── Step 2: One-shot migrations + token seed ──────────────────────────────
     migrate_bridge_rename(data_path)           # D-8.5: rename 'bridge' → 'telegram-bridge'
@@ -235,11 +288,12 @@ async def _run(data_path: Path) -> None:
     # ── Step 4: Wait for shutdown signal ─────────────────────────────────────
     await stop_event.wait()
 
-    # ── Step 5: Shutdown — supervisor first, then uvicorn (D-8.7) ────────────
+    # ── Step 5: Shutdown — supervisor first, then engine, then Next.js ───────
     logger.info("Shutting down")
     await supervisor.stop_all()
     server.should_exit = True
     await uvicorn_task
+    _stop_dashboard(dashboard_proc)
 
 
 # ``assemble_claude_md`` is imported from ``bot.modules.assembler`` above.
@@ -255,4 +309,6 @@ __all__ = [
     "_run",
     "_seed_owner_from_env",
     "_seed_telegram_bridge_token",
+    "_start_dashboard",
+    "_stop_dashboard",
 ]

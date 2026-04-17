@@ -16,6 +16,7 @@ _ALL_REQUIRED = (
     "CLAUDE_CODE_OAUTH_TOKEN",
     "SESSION_SECRET",
     "DASHBOARD_TOKEN",
+    "AUTH_SECRET",
 )
 
 
@@ -24,6 +25,8 @@ def _set_all_required(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
     monkeypatch.setenv("SESSION_SECRET", "sess-secret")
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dashboard-token")
+    # Phase 13: next-auth JWT signing secret for the Next.js dashboard.
+    monkeypatch.setenv("AUTH_SECRET", "auth-secret")
 
 
 # ── Env-var validation tests ─────────────────────────────────────────
