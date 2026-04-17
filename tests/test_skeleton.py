@@ -21,6 +21,8 @@ def _set_phase5_env(monkeypatch: pytest.MonkeyPatch) -> None:
     TELEGRAM_OWNER_ID is no longer required (CLAIM-04: auth moved to state.json)."""
     monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
     monkeypatch.setenv("DASHBOARD_TOKEN", "test-dashboard-token")
+    # Phase 13: AUTH_SECRET added to REQUIRED_ENV_VARS for next-auth dashboard.
+    monkeypatch.setenv("AUTH_SECRET", "test-auth-secret")
 
 
 class TestEnvValidation:
