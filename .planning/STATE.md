@@ -119,6 +119,7 @@ None — v2.0 roadmap validated with 100% requirement coverage (21/21).
 
 - v1.0 shipped 2026-04-15
 - v2.0 roadmap created 2026-04-15 — 5 phases (8–12), 21 REQ mapped
+- Phase 13 added: Migrate dashboard frontend to shared frontend-stack-spec
 - Next: `/gsd-plan-phase 8`
 
 ## Session Continuity

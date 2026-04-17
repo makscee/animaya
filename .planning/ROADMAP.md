@@ -130,3 +130,13 @@ Plans:
 _(999.1 absorbed into Phases 8–10 of v2.0 — removed from backlog.)_
 
 No outstanding backlog items.
+
+### Phase 13: Migrate dashboard frontend to shared frontend-stack-spec
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
