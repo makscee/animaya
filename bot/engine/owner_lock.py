@@ -12,20 +12,36 @@ Telegram bridge or from the /engine/chat HTTP route. This is how T-13-32
 from __future__ import annotations
 
 import asyncio
+import re
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 _locks: dict[str, asyncio.Lock] = {}
 
+# WR-02 (Phase 13 review): strict session_key validator.
+# Only three namespaces are expected to reach the engine:
+#   tg:<id>    — Telegram bridge, owner id is the telegram user id
+#   web:<id>   — Next.js dashboard, owner id is the session.user.id
+#   ops:<tag>  — DASHBOARD_TOKEN ops caller (no owner, its own lock bucket)
+# Limiting the id character class to a safe ASCII subset and capping length
+# prevents a buggy or malicious caller from growing `_locks` unboundedly
+# with garbage keys.
+_SESSION_KEY_RE = re.compile(r"^(tg|web|ops):[A-Za-z0-9_\-]{1,64}$")
+
+
+class InvalidSessionKeyError(ValueError):
+    """Raised when session_key does not match the strict format."""
+
 
 def _owner_of(session_key: str) -> str:
-    """Extract owner id from a session_key of form "tg:<id>" or "web:<id>".
+    """Extract owner id from a strict session_key.
 
-    Returns the raw key if it contains no colon (defensive fallback).
+    Raises `InvalidSessionKeyError` if the key does not match
+    `^(tg|web|ops):[A-Za-z0-9_\\-]{1,64}$`.
     """
-    if ":" in session_key:
-        return session_key.split(":", 1)[1]
-    return session_key
+    if not isinstance(session_key, str) or not _SESSION_KEY_RE.match(session_key):
+        raise InvalidSessionKeyError(f"invalid session_key: {session_key!r}")
+    return session_key.split(":", 1)[1]
 
 
 def _get_lock(owner: str) -> asyncio.Lock:
