@@ -136,11 +136,11 @@ No outstanding backlog items.
 **Goal:** Replace the FastAPI+Jinja+HTMX dashboard with a Next.js 15.5.15 / React 19.2.5 / Tailwind v4 / Bun app that conforms to `~/hub/knowledge/references/frontend-stack-spec.md`. Author a new shared UI style spec extracted from `homelab/apps/admin` (D-12). Demote FastAPI to a loopback-only engine (D-01); Next.js owns port 8090. Land the Phase 12 SSE chat + Hub file tree natively in Next.js (D-09 reorder: Phase 13 ships before Phase 12).
 **Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, SEC-01, SEC-02 (plus D-01..D-15 locked decisions in 13-CONTEXT.md)
 **Depends on:** Phase 11 (OWNER.md contract for D-07 gate)
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 
 Plans:
 - [x] 13-01-PLAN.md — Scaffold dashboard/, author ~/hub/knowledge/references/ui-style-spec.md, Playwright harness (Wave 1)
-- [ ] 13-02-PLAN.md — next-auth Credentials(telegram) provider, OWNER.md gate, DASHBOARD_TOKEN bypass middleware, CSRF/engine/redact helpers (Wave 2)
+- [x] 13-02-PLAN.md — next-auth Credentials(telegram) provider, OWNER.md gate, DASHBOARD_TOKEN bypass middleware, CSRF/engine/redact helpers (Wave 2)
 - [ ] 13-03-PLAN.md — All /api/** route handlers: modules, bridge, hub tree/file, SSE chat proxy, zod schemas (Wave 3, parallel with 13-04)
 - [ ] 13-04-PLAN.md — Python loopback engine (bot/engine/*) with owner-lock + SSE generator, bot/main.py supervises both processes (Wave 3, parallel with 13-03)
 - [ ] 13-05-PLAN.md — Pages: chat+tree unified page, login widget, modules/bridge with rhf+zod, 7 Playwright E2E specs (Wave 4)
