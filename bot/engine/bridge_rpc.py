@@ -12,6 +12,21 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+# WR-07 (Phase 13 review): cap JSON body size even though we only listen on
+# loopback. A misbehaving upstream route could otherwise OOM the engine.
+_MAX_JSON_BYTES = 1_048_576  # 1 MiB
+
+
+async def _read_json_bounded(request: Request) -> dict:
+    cl_raw = request.headers.get("content-length") or "0"
+    try:
+        cl = int(cl_raw)
+    except ValueError:
+        cl = 0
+    if cl > _MAX_JSON_BYTES:
+        raise HTTPException(status_code=413, detail="payload too large")
+    return await request.json()
+
 from bot.modules import get_entry
 from bot.modules.telegram_bridge_state import (
     generate_pairing_code,
@@ -71,7 +86,7 @@ async def regen_code() -> dict[str, Any]:
 async def toggle_bridge(request: Request) -> dict[str, Any]:
     hub = _hub_dir()
     module_dir = _bridge_module_dir(hub)
-    body = await request.json()
+    body = await _read_json_bounded(request)
     enabled = bool(body.get("enabled", False))
     state = read_state(module_dir)
     state["enabled"] = enabled
@@ -83,7 +98,7 @@ async def toggle_bridge(request: Request) -> dict[str, Any]:
 async def set_policy(request: Request) -> dict[str, Any]:
     hub = _hub_dir()
     module_dir = _bridge_module_dir(hub)
-    body = await request.json()
+    body = await _read_json_bounded(request)
     policy = str(body.get("policy", "") or "")
     if not policy:
         raise HTTPException(status_code=400, detail="policy required")

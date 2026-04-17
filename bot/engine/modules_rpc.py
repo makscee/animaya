@@ -22,6 +22,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# WR-07 (Phase 13 review): cap JSON body size on loopback engine reads.
+_MAX_JSON_BYTES = 1_048_576  # 1 MiB
+
+
+async def _read_json_bounded(request: Request) -> dict:
+    cl_raw = request.headers.get("content-length") or "0"
+    try:
+        cl = int(cl_raw)
+    except ValueError:
+        cl = 0
+    if cl > _MAX_JSON_BYTES:
+        raise HTTPException(status_code=413, detail="payload too large")
+    return await request.json()
+
 
 def _hub_dir() -> Path:
     """Resolve hub/data dir from env; tests set `DATA_PATH`."""
@@ -98,7 +112,9 @@ async def install_module(name: str, request: Request) -> dict[str, Any]:
     if card is None:
         raise HTTPException(status_code=404, detail=f"module {name!r} not found")
     try:
-        body = await request.json()
+        body = await _read_json_bounded(request)
+    except HTTPException:
+        raise
     except Exception:  # noqa: BLE001
         body = {}
     from bot.engine.modules_jobs import InProgressError, start_install
@@ -142,7 +158,7 @@ async def update_config(name: str, request: Request) -> dict[str, Any]:
     entry = get_entry(hub, name)
     if entry is None:
         raise HTTPException(status_code=404, detail=f"module {name!r} not installed")
-    body = await request.json()
+    body = await _read_json_bounded(request)
     from bot.engine.modules_forms import save_config
 
     save_config(hub, name, body)
