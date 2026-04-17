@@ -43,9 +43,24 @@ export function verifyTelegramWidget(
 
   const authDate = Number(obj.auth_date);
   if (!Number.isFinite(authDate)) return null;
-  if (Math.floor(Date.now() / 1000) - authDate > 86400) return null;
+  // WR-05 (Phase 13 review): tolerate ~1 day of past skew but reject future
+  // timestamps outright (beyond a tiny 60s allowance for clock drift). A
+  // future-dated auth_date is a client clock bug or forgery signal.
+  const now = Math.floor(Date.now() / 1000);
+  if (now - authDate > 86400) return null;
+  if (authDate - now > 60) return null;
 
-  if (typeof obj.id !== "number" && typeof obj.id !== "string") return null;
+  // WR-04 (Phase 13 review): Telegram's widget always sends `id` as a numeric
+  // literal. Accept strings only if they match the canonical integer shape
+  // Telegram would have serialised — otherwise the HMAC check would have to
+  // be done against an unspecified stringification.
+  if (typeof obj.id === "number") {
+    if (!Number.isFinite(obj.id)) return null;
+  } else if (typeof obj.id === "string") {
+    if (!/^-?\d+$/.test(obj.id)) return null;
+  } else {
+    return null;
+  }
 
   const entries = Object.entries(obj)
     .filter(([k]) => k !== "hash")
