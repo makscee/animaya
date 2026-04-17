@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { engineFetch } from "@/lib/engine.server";
 import { ModuleDTO } from "@/lib/schemas";
-import { sanitizeErrorMessage } from "@/lib/redact.server";
+import { deepRedact, sanitizeErrorMessage } from "@/lib/redact.server";
 
 export const runtime = "nodejs";
 
@@ -30,7 +30,11 @@ export async function GET(_req: NextRequest) {
     const raw = await upstream.json().catch(() => ({}));
     const list = Array.isArray(raw?.modules) ? raw.modules : [];
     const parsed = ModuleDTO.array().safeParse(list);
-    const modules = parsed.success ? parsed.data : [];
+    // CR-02 (Phase 13 review): `ModuleConfigSchema = z.record(z.string(),
+    // z.unknown())` accepts arbitrary keys, so zod alone does NOT strip
+    // secret-named fields nested under `config`. Deep-redact as a second
+    // barrier, mirroring the Python-side `_scrub_mapping` scrubber.
+    const modules = parsed.success ? deepRedact(parsed.data) : [];
     return NextResponse.json({ modules }, { status: upstream.status });
   } catch (e) {
     return NextResponse.json(

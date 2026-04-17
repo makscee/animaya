@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -31,11 +32,43 @@ def _hub_dir() -> Path:
     return Path(raw)
 
 
+_SECRET_KEY_RE = re.compile(
+    r"(token|secret|api_key|apikey|password|credential|oauth)",
+    re.IGNORECASE,
+)
+
+
+def _scrub_mapping(d: dict[str, Any]) -> dict[str, Any]:
+    """Recursively redact any key that looks like a secret.
+
+    CR-02 (Phase 13 review): the old implementation only stripped
+    top-level `bot_token` / `token` and delegated the `config` sub-object
+    to telegram-bridge-specific logic. Module authors adding new credential
+    shapes (e.g., `google_api_key`, `auth.token`) would leak to the browser
+    because `ModuleConfigSchema = z.record(z.string(), z.unknown())` does
+    not strip arbitrary keys. This walker generalises to any nesting depth.
+    """
+    out: dict[str, Any] = {}
+    for k, v in d.items():
+        if isinstance(k, str) and _SECRET_KEY_RE.search(k):
+            out[k] = "[REDACTED]"
+        elif isinstance(v, dict):
+            out[k] = _scrub_mapping(v)
+        elif isinstance(v, list):
+            out[k] = [_scrub_mapping(x) if isinstance(x, dict) else x for x in v]
+        else:
+            out[k] = v
+    return out
+
+
 def _strip_secrets(entry: dict[str, Any]) -> dict[str, Any]:
-    """Remove sensitive fields from a module-entry DTO before HTTP response."""
-    safe = dict(entry)
-    safe.pop("bot_token", None)
-    safe.pop("token", None)
+    """Remove sensitive fields from a module-entry DTO before HTTP response.
+
+    Applies the generic key-regex scrubber at every nesting level, then
+    also runs the legacy telegram-bridge redactor for any bridge-specific
+    keys it knows about (belt + braces).
+    """
+    safe = _scrub_mapping(dict(entry))
     cfg = safe.get("config")
     if isinstance(cfg, dict):
         safe["config"] = redact_bridge_config(cfg)

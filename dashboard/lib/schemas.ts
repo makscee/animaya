@@ -75,9 +75,13 @@ export type ChatSendPayloadType = z.infer<typeof ChatSendPayload>;
 /**
  * Module DTO returned to the browser.
  *
- * SEC-01 enforcement: NO secret credential fields. Engine responses are
- * parsed through `ModuleDTO.array()`; unknown fields are stripped by default,
- * guaranteeing tokens cannot leak even if the Python side returns them.
+ * SEC-01 enforcement: zod's default `.strip()` mode only drops keys that
+ * are NOT declared in the schema. Because `config` is declared as
+ * `z.record(z.string(), z.unknown())`, every key under `config` is
+ * accepted — schema alone does NOT strip secret-named fields. Redaction
+ * for nested secrets happens explicitly in the route handler (see
+ * `deepRedact` in `lib/redact.server.ts`) and on the Python side in
+ * `bot/engine/modules_rpc.py::_scrub_mapping`.
  */
 export const ModuleDTO = z.object({
   name: z.string(),

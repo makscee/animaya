@@ -20,3 +20,35 @@ export function sanitizeErrorMessage(s: string): string {
     .replace(CLAUDE_OAUTH_RE, "[REDACTED_OAUTH]")
     .replace(LONG_HEX_RE, "[REDACTED_HEX]");
 }
+
+/**
+ * Deep-walks a value and replaces the value of any key whose name looks
+ * like a secret with `"[REDACTED]"`. Defense-in-depth mirror of the
+ * Python-side `_scrub_mapping` in `bot/engine/modules_rpc.py`.
+ *
+ * CR-02 (Phase 13 review): Zod's `z.record(z.string(), z.unknown())` in
+ * `ModuleConfigSchema` accepts arbitrary keys, so the schema alone does
+ * NOT strip fields like `google_api_key` or `auth.token`. This helper is
+ * applied in response handlers for list/detail module DTOs.
+ */
+const SECRET_KEY_RE = /token|secret|api_key|apikey|password|credential|oauth/i;
+
+export function deepRedact<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((v) => deepRedact(v)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (SECRET_KEY_RE.test(k)) {
+        out[k] = "[REDACTED]";
+      } else if (v && typeof v === "object") {
+        out[k] = deepRedact(v);
+      } else {
+        out[k] = v;
+      }
+    }
+    return out as unknown as T;
+  }
+  return value;
+}
