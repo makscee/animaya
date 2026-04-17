@@ -115,8 +115,28 @@ export function useSSE(url: string) {
         const delay = Math.min(30_000, 1000 * 2 ** retryRef.current);
         retryRef.current += 1;
         setStatus("error");
-        await new Promise((r) => setTimeout(r, delay));
-        if (ctrl.signal.aborted) return;
+        // WR-06 (Phase 13 review): make the retry timer cancellable so that
+        // if the user starts a new turn (which aborts `ctrl`) or navigates
+        // away while we're sleeping, the retry does not race with the new
+        // stream and double-post.
+        const aborted = await new Promise<boolean>((resolve) => {
+          const timer = setTimeout(() => {
+            ctrl.signal.removeEventListener("abort", onAbort);
+            resolve(false);
+          }, delay);
+          const onAbort = () => {
+            clearTimeout(timer);
+            ctrl.signal.removeEventListener("abort", onAbort);
+            resolve(true);
+          };
+          if (ctrl.signal.aborted) {
+            clearTimeout(timer);
+            resolve(true);
+            return;
+          }
+          ctrl.signal.addEventListener("abort", onAbort);
+        });
+        if (aborted || ctrl.signal.aborted) return;
         try {
           await attempt();
           retryRef.current = 0;
