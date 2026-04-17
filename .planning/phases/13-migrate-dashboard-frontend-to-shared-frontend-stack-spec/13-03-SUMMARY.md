@@ -70,7 +70,7 @@ Wave 3 lands the entire browser-facing HTTP surface as Next.js route handlers (1
 - `dashboard/lib/hub-tree.server.test.ts`: 9 tests — empty-string resolution, knowledge/ resolution, `..`-traversal throw, `.git/hooks/pre-commit` DENY, `.env` DENY_PREFIX, symlink-escape throw, hidden-toggle semantics, DENY still applies when showHidden=true, dir-first sort order.
 - `dashboard/lib/schemas.ts`: 9 exported schemas — `ModuleNameSchema` (`/^[a-z0-9][a-z0-9_-]{0,63}$/`), `ModuleConfigSchema` (opaque record), `BridgeClaimSchema` (empty object), `BridgeTogglePayload`, `BridgePolicyPayload`, `HubTreeQuery`, `HubFileQuery`, `ChatStreamPayload` (1–16000 chars), `ModuleDTO` (strip-mode; NO credential fields).
 
-### Task 2 — 10 route handlers + NextAuth catch-all + helper (commit `644ec2d`)
+### Task 2 — 10 route handlers + NextAuth catch-all + helper (commit `811dfa0`)
 
 - `app/api/auth/[...nextauth]/route.ts`: `export const { GET, POST } = handlers;`
 - `app/api/modules/route.ts`: GET only — re-parses engine JSON `modules` array through `ModuleDTO.array()`. Two tests assert the string `bot_token` never appears in the response even when the upstream engine accidentally includes it.
@@ -114,20 +114,20 @@ Wave 3 lands the entire browser-facing HTTP surface as Next.js route handlers (1
 - **Issue:** Generic record schema can't strip unknown fields; a module registering `{ bot_token: "..." }` in its config would pass through.
 - **Fix:** Added `redactConfig()` helper that replaces any key matching `/token|secret|api_key|apikey|password/i` with `[REDACTED]` on the response path. Applied after engine roundtrip.
 - **Files modified:** `dashboard/app/api/modules/[name]/config/route.ts`
-- **Commit:** `644ec2d` (Task 2)
+- **Commit:** `811dfa0` (Task 2)
 
 **3. [Rule 2 — Missing critical] Hub file route binary + size guards**
 
 - **Found during:** Task 2 authoring — plan specified "1 MB size cap; reject binary" but left the binary-detect strategy to implementer.
 - **Fix:** Two-stage guard: (a) `fs.stat` size check (415 + max/size in body) before read, (b) scan first 1024 bytes of content for NUL byte; any hit → 415 "binary file unsupported".
 - **Files modified:** `dashboard/app/api/hub/file/route.ts`
-- **Commit:** `644ec2d` (Task 2)
+- **Commit:** `811dfa0` (Task 2)
 
 **4. [Rule 1 — Bug] Oracle leak in hub routes**
 
 - **Found during:** Task 2 authoring — plan said "any Error → 403" but naive implementation would let ENOENT leak distinct from path-escape.
 - **Fix:** All Error paths in hub/tree and hub/file collapse to 403 with a sanitized message; attacker can't distinguish "exists but denied" from "doesn't exist" from "traversal blocked".
-- **Commit:** `644ec2d`
+- **Commit:** `811dfa0`
 
 **5. [Rule 3 — Blocking] Worktree node_modules missing**
 
@@ -186,7 +186,7 @@ Files verified (all FOUND):
 Commits verified:
 
 - FOUND: `1f005bc feat(13-03): add hub-tree reader (DASH-04) + shared zod schemas`
-- FOUND: `644ec2d feat(13-03): add modules/bridge/hub route handlers + NextAuth catch-all`
+- FOUND: `811dfa0 feat(13-03): add modules/bridge/hub route handlers + NextAuth catch-all`
 - FOUND: `29f4240 feat(13-03): add SSE chat proxy route with heartbeat passthrough (D-03, DASH-02)`
 
 Verification commands (all pass):
@@ -205,5 +205,5 @@ Verification commands (all pass):
 | # | Hash    | Message |
 |---|---------|---------|
 | 1 | 1f005bc | `feat(13-03): add hub-tree reader (DASH-04) + shared zod schemas` |
-| 2 | 644ec2d | `feat(13-03): add modules/bridge/hub route handlers + NextAuth catch-all` |
+| 2 | 811dfa0 | `feat(13-03): add modules/bridge/hub route handlers + NextAuth catch-all` |
 | 3 | 29f4240 | `feat(13-03): add SSE chat proxy route with heartbeat passthrough (D-03, DASH-02)` |
