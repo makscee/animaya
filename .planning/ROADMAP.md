@@ -25,75 +25,25 @@ Archive: `.planning/milestones/` — ROADMAP, REQUIREMENTS, AUDIT, and all 7 pha
 
 </details>
 
-## Current Milestone: v2.0 — Onboarding Polish & Bridge-as-Module
+<details>
+<summary><strong>v2.0 — Onboarding Polish & Bridge-as-Module</strong> (shipped 2026-04-17, 3 phases, 12 plans)</summary>
 
-**Goal:** Complete the first-run experience. Telegram bridge becomes an installable module with dashboard onboarding (token + pairing-code owner-claim). Dashboard migrated to the shared Next.js frontend stack.
+| Phase | Name | Status |
+|-------|------|--------|
+| 8 | Bridge Extraction & Supervisor Cutover | Complete 2026-04-16 |
+| 9 | Install Dialog & Owner-Claim FSM | Complete 2026-04-16 |
+| 13 | Migrate dashboard frontend to shared frontend-stack-spec | Complete 2026-04-17 |
 
-**Scope (shipped):** Phases 8, 9, 13 — BRDG, CLAIM, SEC, DASH (Next.js) categories.
+**Deferred to v2.1:** Phases 10 (Bridge Settings / Non-Owner Access / Tool-Use Display), 11 (Identity Pre-Install & File Editor), 12 (DASH-04/SEC-02 polish not absorbed by Phase 13).
 
-**Deferred to v2.1:** Phases 10 (Bridge Settings / Non-Owner Access / Tool-Use Display), 11 (Identity Pre-Install & File Editor), 12 (Dashboard SSE Chat & Hub Tree — DASH-01..03 absorbed by Phase 13; residual polish/DASH-04 regression hardening carries forward). See `.planning/v2.0-MILESTONE-AUDIT.md` for gap analysis.
+Archive: `.planning/milestones/v2.0-ROADMAP.md`, `v2.0-REQUIREMENTS.md`, `v2.0-MILESTONE-AUDIT.md`, `v2.0-phases/`.
 
-### Phases
+</details>
 
-- [x] **Phase 8: Bridge Extraction & Supervisor Cutover** — Move Telegram bridge into a first-class runtime module with supervisor-dispatched lifecycle hooks
-- [x] **Phase 9: Install Dialog & Owner-Claim FSM** — Dashboard token-install flow with `getMe` validation and 6-digit pairing-code ownership binding
-- [x] **Phase 13: Migrate dashboard frontend to shared frontend-stack-spec** — Next.js 15 / React 19 / Tailwind v4 / Bun replacement for FastAPI+Jinja+HTMX; FastAPI demoted to loopback engine
+## Current Milestone
 
-### Phase Details
-
-#### Phase 8: Bridge Extraction & Supervisor Cutover
-**Goal:** Telegram bridge starts and stops as an installable runtime module instead of hard-wired boot code, so every later phase plugs into the same lifecycle surface.
-**Depends on:** v1.0 (module registry, manifest, assembler already shipped)
-**Requirements:** BRDG-01, BRDG-03 (scaffold), BRDG-04 (scaffold)
-**Success Criteria** (what must be TRUE):
-  1. Running `python -m bot` with no `TELEGRAM_BOT_TOKEN` env var starts the dashboard cleanly and reports the bridge as "not installed" — no import of `bot.bridge.telegram` in the core boot path.
-  2. With the bridge module present in the registry, the supervisor starts polling via `on_start(app_ctx, config)` and calling `on_stop()` shuts the updater down in the documented `updater.stop -> stop -> shutdown` order (verified via log assertions).
-  3. A Telethon smoke test confirms install → message round-trips → uninstall → subsequent messages are ignored with no zombie polling loop (re-install from scratch also succeeds).
-  4. `TELEGRAM_BOT_TOKEN` becomes optional environment input (bootstrap-only); the bridge module's `config.json` is the canonical source of truth when present.
-**Plans:** 3 plans
-Plans:
-- [x] 08-01-PLAN.md — Supervisor foundation: AppContext, Supervisor, manifest runtime_entry field, registry propagation, Wave 0 test scaffolds
-- [x] 08-02-PLAN.md — Bridge extraction: telegram_bridge runtime adapter (on_start/on_stop), modules/bridge -> modules/telegram-bridge rename + migration, lifecycle.uninstall on_stop wiring
-- [x] 08-03-PLAN.md — Main.py cutover: D-8.7 boot order, TELEGRAM_BOT_TOKEN removed from required env, one-shot token seed, Telethon e2e smoke, LXC human verification
-
-#### Phase 9: Install Dialog & Owner-Claim FSM
-**Goal:** Owner installs and claims the bridge entirely from the dashboard — no `.env` edits, no systemd restarts, no env-var owner gate.
-**Depends on:** Phase 8
-**Requirements:** BRDG-02, CLAIM-01, CLAIM-02, CLAIM-03, CLAIM-04, SEC-01
-**Success Criteria** (what must be TRUE):
-  1. Dashboard install dialog accepts a bot token, validates it via Telegram `getMe` before persisting, and rejects malformed/invalid tokens with a clear error message (no partial state written).
-  2. After install the dashboard displays a 6-digit pairing code with a TTL countdown and a regenerate button; sending the code to the bot from any Telegram account binds that `user_id` as owner and persists it only in the module's `state.json`.
-  3. Pairing attempts are limited to 5 before the code window closes, compared with `hmac.compare_digest`, and expire after 10 minutes; expired/exhausted codes require regeneration.
-  4. Owner can revoke ownership from the dashboard; the module returns to pending-claim state and the next pairing-code cycle rebinds a (possibly different) owner.
-  5. Bot token is never returned by `GET /api/modules` (only `has_token: bool`) and never appears in any log line — verified by grepping logs after a full install + claim + uninstall cycle; `TELEGRAM_OWNER_ID` env gate is removed from the codebase.
-**Plans:** 3 plans
-Plans:
-- [x] 09-01-PLAN.md — Phase 8 fixes, bridge state module, token install endpoint with getMe validation, token redaction
-- [x] 09-02-PLAN.md — Pairing code FSM (HMAC generation/verification), HTMX polling templates, bridge claim handler
-- [ ] 09-03-PLAN.md — Auth migration (TELEGRAM_OWNER_ID removal), revoke endpoint, test fixture migration, human verification
-
-#### Phase 13: Migrate dashboard frontend to shared frontend-stack-spec
-**Goal:** Replace the FastAPI+Jinja+HTMX dashboard with a Next.js 15.5.15 / React 19.2.5 / Tailwind v4 / Bun app that conforms to `~/hub/knowledge/references/frontend-stack-spec.md`. Demote FastAPI to a loopback-only engine; Next.js owns port 8090.
-**Depends on:** Phase 9
-**Requirements:** DASH-01, DASH-02, DASH-03, DASH-04, SEC-01, SEC-02 (plus D-01..D-15 in 13-CONTEXT.md)
-**Plans:** 6/6 complete
-
-### Progress
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 8. Bridge Extraction & Supervisor Cutover | 3/3 | Complete | 2026-04-16 |
-| 9. Install Dialog & Owner-Claim FSM | 3/3 | Complete | 2026-04-16 |
-| 13. Dashboard frontend migration | 6/6 | Complete | 2026-04-17 |
-
-### Deferred to v2.1
-
-- **Phase 10** — Bridge Settings, Non-Owner Access & Tool-Use Display (BRDG-03/04, ACC-01..03, TUI-01..03)
-- **Phase 11** — Identity Pre-Install & File-Content Editor (IDN-01..03)
-- **Phase 12** — Any DASH-04/SEC-02 polish not already shipped by Phase 13
+_No active milestone. Run `/gsd-new-milestone` to start v2.1._
 
 ## Backlog
-
-_(999.1 absorbed into Phases 8–10 of v2.0 — removed from backlog.)_
 
 No outstanding backlog items.
