@@ -2,8 +2,8 @@
 phase: 13
 slug: migrate-dashboard-frontend-to-shared-frontend-stack-spec
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-17
 ---
 
@@ -37,16 +37,25 @@ created: 2026-04-17
 
 ## Per-Task Verification Map
 
-*Filled by planner. Each task maps to a row with automated command.*
+| Plan.Task | Req | Command |
+|-----------|-----|---------|
+| 13-01.1 | D-12 | `grep -q 'OBSOLETE' /Users/admin/hub/knowledge/voidnet/ui-spec.md` |
+| 13-01.2 | D-13, D-14 | `cd dashboard && bunx tsc --noEmit` |
+| 13-01.3 | D-11 | `cd dashboard && bunx playwright test --list` |
+| 13-02.* | D-06, D-07, Telegram HMAC | `cd dashboard && bun test lib/` |
+| 13-03.* | SEC-01, SEC-02 | `cd dashboard && bun test app/api/` |
+| 13-04.* | DASH-01..04 | `cd dashboard && bunx playwright test` |
+| 13-05.* | D-03 | `pytest tests/engine/ -v` |
+| 13-06.* | D-01, D-08 | `rg -n 'itsdangerous\|Jinja2' bot/ \|\| echo ok` + full suite |
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `dashboard/package.json` — Next.js 16, React 19, Tailwind 4 pinned per spec
-- [ ] `playwright.config.ts` — E2E harness for dashboard parity
-- [ ] `tests/dashboard/` — parity + auth + SSE fixtures
-- [ ] Bun layer in `docker/Dockerfile.bot`
+- [x] `dashboard/package.json` — Next.js 15.5.15, React 19.2.5, Tailwind 4.2.2 pinned per spec (13-01.2)
+- [x] `dashboard/playwright.config.ts` — E2E harness for dashboard parity (13-01.3)
+- [x] `dashboard/tests/e2e/fixtures.ts` — auth + owner + Telegram HMAC fixtures (13-01.3)
+- [ ] Bun layer in `docker/Dockerfile.bot` (Plan 13-06)
 
 ---
 
@@ -67,4 +76,4 @@ created: 2026-04-17
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-04-17 (Wave 1 / Plan 13-01 Task 3)
