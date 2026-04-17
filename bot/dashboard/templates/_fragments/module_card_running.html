@@ -1,9 +1,0 @@
-<div class="card job-running"
-     hx-get="/modules/{{ card.name if card else job.module }}/job/{{ job.id }}"
-     hx-trigger="every 1s"
-     hx-swap="outerHTML"
-     aria-live="polite">
-  <h3 style="margin:0 0 .5rem;font-size:1rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim)">{{ card.name if card else job.module }}</h3>
-  <span class="badge pending">{{ "Installing" if job.op == "install" else "Uninstalling" }}…</span>
-  <div class="progress" style="margin-top:.75rem"><div class="progress-bar progress-indeterminate"></div></div>
-</div>

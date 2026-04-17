@@ -1,5 +1,0 @@
-<form id="config-form" hx-post="/modules/{{ name }}/config" hx-target="#config-form" hx-swap="outerHTML">
-  {% if summary_error %}<div class="error">{{ summary_error }}</div>{% endif %}
-  {% for field in fields %}{% include "_fragments/form_field.html" %}{% endfor %}
-  <button class="btn" style="border-color:var(--accent);color:var(--accent)">Save config</button>
-</form>

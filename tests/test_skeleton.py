@@ -135,7 +135,6 @@ class TestTelegramBridgeIntegration:
 
         with (
             patch("bot.main.uvicorn.Server", _StubServer),
-            patch("bot.main.build_dashboard_app", return_value=MagicMock()),
             patch("bot.main.asyncio.Event", _AutoSetEvent),
             patch("bot.main.Supervisor") as MockSupervisor,
             patch("bot.main.migrate_bridge_rename", return_value=False),
@@ -175,7 +174,6 @@ class TestTelegramBridgeIntegration:
 
         with (
             patch("bot.main.uvicorn.Server", _StubServer),
-            patch("bot.main.build_dashboard_app", return_value=MagicMock()),
             patch("bot.main.asyncio.Event", _AutoSetEvent),
             patch("bot.main.Supervisor") as MockSupervisor,
             patch("bot.main.migrate_bridge_rename", return_value=False),
@@ -227,7 +225,6 @@ class TestTelegramBridgeIntegration:
         with (
             patch("bot.main.assemble_claude_md", side_effect=track_assemble),
             patch("bot.main.uvicorn.Server", _StubServer),
-            patch("bot.main.build_dashboard_app", return_value=MagicMock()),
             patch("bot.main.asyncio.Event", _AutoSetEvent),
             patch("bot.main.Supervisor") as MockSupervisor,
             patch("bot.main.migrate_bridge_rename", return_value=False),
@@ -244,12 +241,6 @@ class TestTelegramBridgeIntegration:
 
 
 # ── CLAIM-04: TELEGRAM_OWNER_ID fully removed from production code ────────────
-
-
-def test_no_telegram_owner_id_in_deps() -> None:
-    """CLAIM-04: TELEGRAM_OWNER_ID env gate fully removed from deps.py."""
-    source = Path("bot/dashboard/deps.py").read_text()
-    assert "TELEGRAM_OWNER_ID" not in source
 
 
 def test_no_telegram_owner_id_in_bridge() -> None:

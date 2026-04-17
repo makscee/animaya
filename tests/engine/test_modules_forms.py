@@ -1,13 +1,16 @@
-"""Tests for auto-generated module config forms (Plan 05-06, DASH-06)."""
+"""Tests for bot.engine.modules_forms — schema-driven form rendering + persist.
+
+HTTP endpoint coverage lives in Playwright (dashboard/tests/e2e/). These
+tests cover pure business logic: render_fields / coerce / validate /
+save_config. Migrated from tests/dashboard/test_config_form.py during
+Phase 13 Wave 5 cutover (D-08 big-bang).
+"""
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Iterator
 
 import pytest
-
-from tests.dashboard._helpers import build_client, make_session_cookie
 
 
 # ── Test fixtures: module dir + schema-aware seeding ─────────────────
@@ -61,18 +64,10 @@ def modules_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture
-def auth_client(
-    temp_hub_dir: Path,
-    session_secret: str,  # noqa: ARG001
-    owner_id: int,
-    bot_token: str,  # noqa: ARG001
-    events_log: Path,  # noqa: ARG001
-    modules_root: Path,  # noqa: ARG001
-) -> Iterator:
-    """TestClient with a pre-seeded owner session cookie."""
-    with build_client(temp_hub_dir, follow_redirects=False) as tc:
-        tc.cookies.set("animaya_session", make_session_cookie(owner_id))
-        yield tc
+def temp_hub_dir(tmp_path: Path) -> Path:
+    hub = tmp_path / "hub"
+    hub.mkdir(parents=True, exist_ok=True)
+    return hub
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -80,7 +75,7 @@ def auth_client(
 # ────────────────────────────────────────────────────────────────────
 
 def test_render_fields_string():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {
         "type": "object",
         "properties": {
@@ -104,7 +99,7 @@ def test_render_fields_string():
 
 
 def test_render_fields_string_with_enum():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {
         "type": "object",
         "properties": {"mode": {"type": "string", "enum": ["a", "b", "c"]}},
@@ -115,7 +110,7 @@ def test_render_fields_string_with_enum():
 
 
 def test_render_fields_integer_uses_min_max():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {
         "type": "object",
         "properties": {
@@ -130,13 +125,13 @@ def test_render_fields_integer_uses_min_max():
 
 
 def test_render_fields_number():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {"type": "object", "properties": {"ratio": {"type": "number"}}}
     assert render_fields(schema)[0]["kind"] == "number"
 
 
 def test_render_fields_boolean():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {
         "type": "object",
         "properties": {"enabled": {"type": "boolean", "default": True}},
@@ -147,7 +142,7 @@ def test_render_fields_boolean():
 
 
 def test_render_fields_unsupported_object():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {"type": "object", "properties": {"nested": {"type": "object"}}}
     f = render_fields(schema)[0]
     assert f["kind"] == "unsupported"
@@ -156,14 +151,14 @@ def test_render_fields_unsupported_object():
 
 
 def test_render_fields_unsupported_array():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {"type": "object", "properties": {"items": {"type": "array"}}}
     f = render_fields(schema)[0]
     assert f["kind"] == "unsupported"
 
 
 def test_render_fields_uses_current_over_default():
-    from bot.dashboard.forms import render_fields
+    from bot.engine.modules_forms import render_fields
     schema = {
         "type": "object",
         "properties": {"name": {"type": "string", "default": "x"}},
@@ -177,7 +172,7 @@ def test_render_fields_uses_current_over_default():
 # ────────────────────────────────────────────────────────────────────
 
 def test_coerce_integer_from_string():
-    from bot.dashboard.forms import coerce
+    from bot.engine.modules_forms import coerce
     schema = {"type": "object", "properties": {"age": {"type": "integer"}}}
     payload, errors = coerce({"age": "42"}, schema)
     assert payload == {"age": 42}
@@ -185,7 +180,7 @@ def test_coerce_integer_from_string():
 
 
 def test_coerce_integer_empty_string_removes_key():
-    from bot.dashboard.forms import coerce
+    from bot.engine.modules_forms import coerce
     schema = {"type": "object", "properties": {"age": {"type": "integer"}}}
     payload, errors = coerce({"age": ""}, schema)
     assert "age" not in payload
@@ -193,21 +188,21 @@ def test_coerce_integer_empty_string_removes_key():
 
 
 def test_coerce_boolean_missing_is_false():
-    from bot.dashboard.forms import coerce
+    from bot.engine.modules_forms import coerce
     schema = {"type": "object", "properties": {"enabled": {"type": "boolean"}}}
     payload, _ = coerce({}, schema)
     assert payload == {"enabled": False}
 
 
 def test_coerce_boolean_present_is_true():
-    from bot.dashboard.forms import coerce
+    from bot.engine.modules_forms import coerce
     schema = {"type": "object", "properties": {"enabled": {"type": "boolean"}}}
     payload, _ = coerce({"enabled": "on"}, schema)
     assert payload == {"enabled": True}
 
 
 def test_coerce_integer_non_numeric_sets_error():
-    from bot.dashboard.forms import coerce
+    from bot.engine.modules_forms import coerce
     schema = {"type": "object", "properties": {"age": {"type": "integer"}}}
     _, errors = coerce({"age": "abc"}, schema)
     assert "age" in errors
@@ -218,7 +213,7 @@ def test_coerce_integer_non_numeric_sets_error():
 # ────────────────────────────────────────────────────────────────────
 
 def test_validate_happy_path():
-    from bot.dashboard.forms import validate
+    from bot.engine.modules_forms import validate
     schema = {
         "type": "object",
         "properties": {"count": {"type": "integer", "minimum": 1, "maximum": 10}},
@@ -227,7 +222,7 @@ def test_validate_happy_path():
 
 
 def test_validate_returns_field_errors():
-    from bot.dashboard.forms import validate
+    from bot.engine.modules_forms import validate
     schema = {
         "type": "object",
         "properties": {"count": {"type": "integer", "minimum": 1, "maximum": 10}},
@@ -237,7 +232,7 @@ def test_validate_returns_field_errors():
 
 
 def test_validate_missing_required_field():
-    from bot.dashboard.forms import validate
+    from bot.engine.modules_forms import validate
     schema = {
         "type": "object",
         "required": ["x"],
@@ -248,15 +243,15 @@ def test_validate_missing_required_field():
 
 
 # ────────────────────────────────────────────────────────────────────
-# Unit test: save_config
+# Integration test: save_config
 # ────────────────────────────────────────────────────────────────────
 
 def test_save_config_writes_registry_and_assembler(
     temp_hub_dir: Path, modules_root: Path, monkeypatch: pytest.MonkeyPatch,
 ):
-    from bot.dashboard import forms
-    from bot.modules import install as module_install
+    from bot.engine import modules_forms as forms
     from bot.modules import get_entry
+    from bot.modules import install as module_install
 
     _seed_module_with_schema(modules_root, "demo", DEMO_SCHEMA)
     module_install(modules_root / "demo", temp_hub_dir)
@@ -269,7 +264,11 @@ def test_save_config_writes_registry_and_assembler(
 
     monkeypatch.setattr(forms, "assemble_claude_md", fake_assemble)
 
-    forms.save_config(temp_hub_dir, "demo", {"name": "abc", "count": 7, "enabled": False, "mode": "b"})
+    forms.save_config(
+        temp_hub_dir,
+        "demo",
+        {"name": "abc", "count": 7, "enabled": False, "mode": "b"},
+    )
 
     entry = get_entry(temp_hub_dir, "demo")
     assert entry is not None
@@ -277,99 +276,3 @@ def test_save_config_writes_registry_and_assembler(
         "name": "abc", "count": 7, "enabled": False, "mode": "b",
     }
     assert called == [temp_hub_dir]
-
-
-# ────────────────────────────────────────────────────────────────────
-# Integration tests: HTTP endpoints
-# ────────────────────────────────────────────────────────────────────
-
-def test_config_endpoint_requires_owner(
-    temp_hub_dir: Path,
-    session_secret: str,  # noqa: ARG001
-    owner_id: int,  # noqa: ARG001
-    bot_token: str,  # noqa: ARG001
-    events_log: Path,  # noqa: ARG001
-    modules_root: Path,  # noqa: ARG001
-):
-    _seed_module_with_schema(modules_root, "foo", DEMO_SCHEMA)
-    with build_client(temp_hub_dir, follow_redirects=False) as tc:
-        r = tc.get("/modules/foo/config")
-        assert r.status_code in (302, 307)
-        assert r.headers.get("location", "").endswith("/login")
-
-
-def test_config_endpoint_renders_form_for_installed_module(
-    auth_client, modules_root: Path, temp_hub_dir: Path,
-):
-    _seed_module_with_schema(modules_root, "foo", DEMO_SCHEMA)
-    from bot.modules import install as module_install
-    module_install(modules_root / "foo", temp_hub_dir)
-
-    r = auth_client.get("/modules/foo/config")
-    assert r.status_code == 200, r.text
-    body = r.text
-    assert 'hx-post="/modules/foo/config"' in body
-    assert '<input type="text"' in body  # name field
-    assert 'type="number"' in body  # count field
-    assert 'type="checkbox"' in body  # enabled
-    assert "<select" in body  # mode enum
-
-
-def test_config_endpoint_shows_notice_when_no_schema(
-    auth_client, modules_root: Path, temp_hub_dir: Path,
-):
-    _seed_module_with_schema(modules_root, "foo", None)
-    from bot.modules import install as module_install
-    module_install(modules_root / "foo", temp_hub_dir)
-
-    r = auth_client.get("/modules/foo/config")
-    assert r.status_code == 200, r.text
-    assert "This module has no configuration" in r.text
-
-
-def test_config_endpoint_404_for_uninstalled(
-    auth_client, modules_root: Path,
-):
-    _seed_module_with_schema(modules_root, "foo", DEMO_SCHEMA)
-    r = auth_client.get("/modules/foo/config")
-    assert r.status_code == 404
-
-
-def test_post_config_valid_saves_and_returns_success_fragment(
-    auth_client, modules_root: Path, temp_hub_dir: Path,
-):
-    _seed_module_with_schema(modules_root, "foo", DEMO_SCHEMA)
-    from bot.modules import get_entry
-    from bot.modules import install as module_install
-    module_install(modules_root / "foo", temp_hub_dir)
-
-    r = auth_client.post(
-        "/modules/foo/config",
-        data={"name": "abc", "count": "7", "enabled": "on", "mode": "b"},
-    )
-    assert r.status_code == 200, r.text
-    assert "Saved. CLAUDE.md rebuilt." in r.text
-    entry = get_entry(temp_hub_dir, "foo")
-    assert entry is not None
-    assert entry["config"]["name"] == "abc"
-    assert entry["config"]["count"] == 7
-    assert entry["config"]["enabled"] is True
-    assert entry["config"]["mode"] == "b"
-
-
-def test_post_config_invalid_re_renders_with_errors(
-    auth_client, modules_root: Path, temp_hub_dir: Path,
-):
-    _seed_module_with_schema(modules_root, "foo", DEMO_SCHEMA)
-    from bot.modules import install as module_install
-    module_install(modules_root / "foo", temp_hub_dir)
-
-    # count=500 violates maximum=100
-    r = auth_client.post(
-        "/modules/foo/config",
-        data={"name": "abc", "count": "500", "mode": "a"},
-    )
-    assert r.status_code == 200, r.text
-    body = r.text
-    assert "field-error" in body
-    assert "errors below" in body

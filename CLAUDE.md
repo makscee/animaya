@@ -68,6 +68,7 @@ Required:
 - `CLAUDE_CODE_OAUTH_TOKEN` — Claude Code OAuth token (handles all Claude API auth)
 - `AUTH_SECRET` — next-auth v5 JWT signing secret for the Next.js dashboard (Phase 13). Generate with `openssl rand -base64 32`.
 - `OWNER_TELEGRAM_ID` — Telegram user id of the owner (set by install step from `OWNER.md`). Edge middleware fails closed if unset.
+- `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` — Bot username without `@` for the Telegram Login Widget on the dashboard (Phase 13). Source: @BotFather → your bot → Bot Info.
 
 Optional:
 - `CLAUDE_MODEL` — Model override (default: claude-sonnet-4-6)

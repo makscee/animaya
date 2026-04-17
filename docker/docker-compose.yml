@@ -6,10 +6,17 @@ services:
     container_name: animaya-bot
     restart: unless-stopped
     env_file: ../.env
+    # Phase 13 env (next-auth + owner gate + engine loopback).
+    # Values come from .env; surfaced here for documentation + fail-fast.
+    environment:
+      - AUTH_SECRET=${AUTH_SECRET}
+      - OWNER_TELEGRAM_ID=${OWNER_TELEGRAM_ID}
+      - NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}
+      - ANIMAYA_ENGINE_PORT=${ANIMAYA_ENGINE_PORT:-8091}
     volumes:
       - bot-data:/data
-    network_mode: host
-    # Resource limits (sandbox hardening deferred to Phase 3)
+    network_mode: host   # Next.js listens on 127.0.0.1:8090; Caddy fronts it.
+    # Resource limits (sandbox hardening deferred to Phase 3).
     mem_limit: 2g
     cpus: 1.0
     pids_limit: 256

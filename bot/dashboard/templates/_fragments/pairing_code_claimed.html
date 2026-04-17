@@ -1,8 +1,0 @@
-<div id="claim-status">
-  <div class="success" role="alert">Ownership claimed. You are the owner of this bot.</div>
-  <button class="btn btn-danger"
-          hx-post="/api/modules/telegram-bridge/revoke"
-          hx-confirm="Revoke ownership? The bot will be accessible to anyone until reclaimed."
-          hx-target="#claim-status"
-          hx-swap="outerHTML">Revoke Ownership</button>
-</div>
