@@ -16,20 +16,34 @@ export const ModuleNameSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9_-]{0,63}$/, "invalid module name");
 
-/** Per-module config is opaque at the route boundary; module registry validates internally. */
+/** Per-module config at the route boundary — raw record. Engine validates module-specific fields. */
 export const ModuleConfigSchema = z.record(z.string(), z.unknown());
+
+/** Form-side wrapper used by the module-detail rhf form (values = { config: {...} }). */
+export const ModuleConfigFormSchema = z.object({
+  config: ModuleConfigSchema,
+});
+export type ModuleConfigPayload = z.infer<typeof ModuleConfigFormSchema>;
 
 // ── Bridge payloads ────────────────────────────────────────────────────────
 
-/** Bridge claim has no body — CSRF-protected POST. */
-export const BridgeClaimSchema = z.object({});
+/** Bridge claim at the route boundary — CSRF-protected POST. Optional pairing code. */
+export const BridgeClaimSchema = z.object({
+  code: z.string().min(4).optional(),
+});
+
+/** Form-side claim payload — code is required in the UI. */
+export const BridgeClaimPayload = z.object({
+  code: z.string().min(4, "Claim code required"),
+});
+export type BridgeClaimPayloadType = z.infer<typeof BridgeClaimPayload>;
 
 export const BridgeTogglePayload = z.object({
   enabled: z.boolean(),
 });
 
 export const BridgePolicyPayload = z.object({
-  policy: z.enum(["open", "owner_only", "invite"]),
+  policy: z.enum(["owner_only", "allowlist", "open"]),
 });
 
 // ── Hub filesystem queries ─────────────────────────────────────────────────
@@ -48,6 +62,13 @@ export const HubFileQuery = z.object({
 export const ChatStreamPayload = z.object({
   message: z.string().min(1).max(16000),
 });
+
+/** Form-side send payload — adds optional session_id. */
+export const ChatSendPayload = z.object({
+  message: z.string().min(1, "Message cannot be empty").max(16000),
+  session_id: z.string().optional(),
+});
+export type ChatSendPayloadType = z.infer<typeof ChatSendPayload>;
 
 // ── Response DTOs ──────────────────────────────────────────────────────────
 

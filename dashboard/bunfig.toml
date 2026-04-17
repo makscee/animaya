@@ -1,2 +1,4 @@
 [test]
 preload = ["./test-setup.ts"]
+# Exclude Playwright E2E specs — those run via `bunx playwright test`.
+root = "lib"

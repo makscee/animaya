@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   retries: 0,
+  globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   use: {
     baseURL: process.env.PW_BASE_URL ?? "http://127.0.0.1:8090",
     trace: "retain-on-failure",
