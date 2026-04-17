@@ -97,6 +97,9 @@ Plans:
 **UI hint**: yes
 
 #### Phase 12: Dashboard SSE Chat & Hub File Tree
+
+> **Superseded for DASH-01..03 by Phase 13 (D-09 reorder).** Phase 12 remains scoped only to any DASH-04/SEC-02 regression hardening, polish items, or behaviors not delivered in the Phase 13 Next.js build. See Phase 13 SUMMARYs for what actually shipped.
+
 **Goal:** Owner has a single dashboard page that pairs a streaming Claude chat with a collapsible, read-only view of the whole `~/hub/` tree — the non-Telegram interface to the same assistant.
 **Depends on:** Phase 10 (shared tool-use display strategies), Phase 11 (identity present on first boot), Phase 8 (stable supervisor)
 **Requirements:** DASH-01, DASH-02, DASH-03, DASH-04, SEC-02
