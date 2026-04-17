@@ -83,12 +83,16 @@ export async function safeResolve(rel: string): Promise<string> {
 
   // Step 2: canonicalize. If the target does not exist yet, realpath on the
   // nearest existing ancestor and re-append the remainder.
-  let canonical: string;
+  //
+  // WR-03 (Phase 13 review): the old fallback silently assigned `canonical =
+  // joined` when NO ancestor resolved, which would defeat the symlink-escape
+  // prefix check on a broken root. We now rely on the `fs.realpath(root)`
+  // call at the top of this function (which throws if the root is missing)
+  // and require canonicalization to succeed — otherwise throw.
+  let canonical: string | undefined;
   try {
     canonical = await fs.realpath(joined);
   } catch {
-    // Best-effort canonicalization for non-existent paths: canonicalize the
-    // closest existing ancestor and re-join the remainder.
     let cursor = joined;
     const trailing: string[] = [];
     while (cursor !== path.dirname(cursor)) {
@@ -101,11 +105,13 @@ export async function safeResolve(rel: string): Promise<string> {
         cursor = path.dirname(cursor);
       }
     }
-    // If we never found an existing ancestor, fall back to the lexical path.
-    // (rootReal itself is guaranteed to exist, so this branch is unreachable
-    // in practice.)
-    // @ts-expect-error — assigned in the loop above in every realistic case.
-    if (!canonical) canonical = joined;
+  }
+  if (!canonical) {
+    // rootReal exists (resolved at line 74), so every real path within it has
+    // at least one canonicalizable ancestor. Reaching here means the caller
+    // supplied a pathological input; fail closed instead of trusting the
+    // lexical path.
+    throw new Error("path cannot be canonicalized");
   }
 
   // Step 3: prefix-check against canonical root.
