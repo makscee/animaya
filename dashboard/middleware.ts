@@ -90,6 +90,22 @@ export default async function middleware(req: NextRequest) {
     expectedDashToken &&
     edgeConstantTimeEqual(dashToken, expectedDashToken)
   ) {
+    // CR-01 (Phase 13 review): the bypass must not silently reuse an existing
+    // next-auth session cookie, or downstream routes would mint
+    // `web:<ownerId>` session_keys from a request that was never re-gated for
+    // owner equality. Strip the session cookie for this request and flag the
+    // origin as ops-token so routes can distinguish and (optionally) accept.
+    requestHeaders.set("x-animaya-ops", "1");
+    const rawCookie = req.headers.get("cookie") ?? "";
+    const cleanedCookie = rawCookie
+      .split(/;\s*/)
+      .filter(
+        (c) =>
+          !/^(?:__Secure-)?authjs\.session-token=/.test(c) &&
+          !/^(?:__Secure-)?next-auth\.session-token=/.test(c),
+      )
+      .join("; ");
+    requestHeaders.set("cookie", cleanedCookie);
     const passRes = NextResponse.next({ request: { headers: requestHeaders } });
     return applySecurityHeaders(passRes, nonce);
   }
