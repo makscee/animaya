@@ -66,6 +66,8 @@ python -m pytest tests/ -v
 Required:
 - `TELEGRAM_BOT_TOKEN` — Telegram bot token from @BotFather
 - `CLAUDE_CODE_OAUTH_TOKEN` — Claude Code OAuth token (handles all Claude API auth)
+- `AUTH_SECRET` — next-auth v5 JWT signing secret for the Next.js dashboard (Phase 13). Generate with `openssl rand -base64 32`.
+- `OWNER_TELEGRAM_ID` — Telegram user id of the owner (set by install step from `OWNER.md`). Edge middleware fails closed if unset.
 
 Optional:
 - `CLAUDE_MODEL` — Model override (default: claude-sonnet-4-6)
@@ -76,6 +78,7 @@ Optional:
 - `EMBEDDING_API_KEY` — API key for embeddings (semantic search)
 - `EMBEDDING_BASE_URL` — Embeddings API URL (default: OpenAI)
 - `DASHBOARD_TOKEN` — Dashboard auth token
+- `ANIMAYA_ENGINE_PORT` — Internal loopback port for the Python engine (Phase 13, default: 8091)
 - `GIT_COMMIT_INTERVAL` — Auto-commit interval in seconds (default: 300)
 
 ## Conventions
