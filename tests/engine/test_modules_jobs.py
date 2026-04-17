@@ -1,4 +1,4 @@
-"""Tests for bot.dashboard.jobs — async install/uninstall job runner (Plan 05-05)."""
+"""Tests for bot.engine.modules_jobs — async install/uninstall job runner (Plan 05-05)."""
 from __future__ import annotations
 
 import asyncio
@@ -56,9 +56,9 @@ def modules_root(tmp_path: Path) -> Path:
 def _reset_jobs_state(events_log: Path):  # noqa: ARG001
     """Clear _jobs dict + reset retention between tests so they don't leak state."""
     try:
-        from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+        from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
     except ImportError:
-        pytest.skip("bot.dashboard.jobs not yet implemented")
+        pytest.skip("bot.engine.modules_jobs not yet implemented")
     jobs_mod._jobs.clear()
     # Reset retention to default (10 min) in case a test shortened it.
     jobs_mod._set_retention_for_tests(timedelta(minutes=10))
@@ -90,7 +90,7 @@ async def _wait_for_status(jobs_mod, job_id: str, target: set[str], timeout: flo
 async def test_start_install_returns_running_job(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
     from bot.modules import get_entry  # noqa: PLC0415
 
     mdir = _seed_module(modules_root, "foo")
@@ -107,7 +107,7 @@ async def test_start_install_returns_running_job(
 async def test_start_install_failure_captures_log_and_rollback(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
 
     mdir = _seed_module(
         modules_root, "bad",
@@ -129,7 +129,7 @@ async def test_start_install_failure_captures_log_and_rollback(
 async def test_start_install_failure_dirty_rollback(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
 
     # install.sh creates leaked.txt under hub, then exits 1.
     # uninstall.sh is a no-op so the leaked file remains.
@@ -154,7 +154,7 @@ async def test_start_install_failure_dirty_rollback(
 async def test_second_install_while_running_raises_InProgressError(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
 
     slow = _seed_module(
         modules_root, "slow",
@@ -173,7 +173,7 @@ async def test_second_install_while_running_raises_InProgressError(
 async def test_start_uninstall_clears_entry(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
     from bot.modules import get_entry, install  # noqa: PLC0415
 
     mdir = _seed_module(modules_root, "keep")
@@ -189,7 +189,7 @@ async def test_start_uninstall_clears_entry(
 async def test_get_job_returns_None_after_eviction(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
 
     mdir = _seed_module(modules_root, "ev")
     job = await jobs_mod.start_install("ev", mdir, temp_hub_dir)
@@ -203,7 +203,7 @@ async def test_get_job_returns_None_after_eviction(
 async def test_install_does_not_block_event_loop(
     modules_root: Path, temp_hub_dir: Path, events_log: Path,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
 
     mdir = _seed_module(
         modules_root, "slower",
@@ -223,7 +223,7 @@ async def test_install_does_not_block_event_loop(
 async def test_events_emitted_on_install_and_failure(
     modules_root: Path, temp_hub_dir: Path, events_log: Path, monkeypatch,  # noqa: ARG001
 ):
-    from bot.dashboard import jobs as jobs_mod  # noqa: PLC0415
+    from bot.engine import modules_jobs as jobs_mod  # noqa: PLC0415
 
     captured: list[tuple[str, str, str, dict]] = []
 

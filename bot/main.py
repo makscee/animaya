@@ -29,7 +29,6 @@ from pathlib import Path
 
 import uvicorn
 
-from bot.dashboard.app import build_app as build_dashboard_app
 from bot.engine import http as engine_http
 from bot.events import emit as _emit
 from bot.events import rotate as rotate_events
@@ -234,9 +233,11 @@ async def _run(data_path: Path) -> None:
     brings the dashboard up (SC#1).
     """
     # ── Step 1: Build + start engine (Python) + Next.js dashboard subprocess ──
-    # Phase 13: FastAPI is demoted to a loopback-only engine (D-01/D-03).
-    # Next.js owns the public HTTP surface on port 8090.
-    dashboard_app = build_dashboard_app(hub_dir=data_path)  # still used for AppContext
+    # Phase 13: FastAPI is demoted to a loopback-only engine (D-01/D-03/D-08).
+    # Next.js owns the public HTTP surface on port 8090. The legacy
+    # bot.dashboard.app.build_app is deleted (D-08 big-bang) — the engine's
+    # FastAPI app carries supervisor/ctx via app.state for module lifecycle.
+    engine_app = engine_http.app
     engine_host = engine_http.get_host()            # hardcoded 127.0.0.1 (T-13-31)
     engine_port = engine_http.get_port()            # ANIMAYA_ENGINE_PORT, default 8091
     config = uvicorn.Config(
@@ -276,13 +277,13 @@ async def _run(data_path: Path) -> None:
         data_path=data_path,
         stop_event=stop_event,
         event_bus=_event_bus,
-        dashboard_app=dashboard_app,
+        dashboard_app=engine_app,
     )
     supervisor = Supervisor()
-    dashboard_app.state.supervisor = supervisor
-    # Expose AppContext for dashboard-driven install/uninstall flows that need
+    engine_app.state.supervisor = supervisor
+    # Expose AppContext for engine-driven install/uninstall flows that need
     # to start/stop modules at runtime (supervisor.start_module / stop_module).
-    dashboard_app.state.ctx = ctx
+    engine_app.state.ctx = ctx
     await supervisor.start_all(ctx)
 
     # ── Step 4: Wait for shutdown signal ─────────────────────────────────────
@@ -303,7 +304,6 @@ __all__ = [
     "DEFAULT_DATA_PATH",
     "REQUIRED_ENV_VARS",
     "assemble_claude_md",
-    "build_dashboard_app",
     "main",
     "rotate_events",
     "_run",

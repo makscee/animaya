@@ -57,7 +57,6 @@ async def test_run_with_empty_registry_and_no_token_env_succeeds(
     with (
         patch("bot.main.uvicorn.Server", return_value=mock_server),
         patch("bot.main.uvicorn.Config", return_value=MagicMock()),
-        patch("bot.main.build_dashboard_app", return_value=MagicMock()),
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", return_value=False),
@@ -228,7 +227,6 @@ async def test_migrate_bridge_rename_called_during_run(
     with (
         patch("bot.main.uvicorn.Server", return_value=mock_server),
         patch("bot.main.uvicorn.Config", return_value=MagicMock()),
-        patch("bot.main.build_dashboard_app", return_value=MagicMock()),
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", side_effect=_capture_migrate),
@@ -290,7 +288,6 @@ async def test_dashboard_starts_before_supervisor(
     with (
         patch("bot.main.uvicorn.Server", return_value=mock_server),
         patch("bot.main.uvicorn.Config", return_value=MagicMock()),
-        patch("bot.main.build_dashboard_app", return_value=MagicMock()),
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", return_value=False),
@@ -359,7 +356,6 @@ async def test_supervisor_stop_all_before_uvicorn_shutdown(
     with (
         patch("bot.main.uvicorn.Server", return_value=tracking_server),
         patch("bot.main.uvicorn.Config", return_value=MagicMock()),
-        patch("bot.main.build_dashboard_app", return_value=MagicMock()),
         patch("bot.main.rotate_events"),
         patch("bot.main.assemble_claude_md"),
         patch("bot.main.migrate_bridge_rename", return_value=False),
