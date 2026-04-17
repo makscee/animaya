@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid input" }, { status: 400 });
   }
 
+  // WR-01 (Phase 13 review): propagate client disconnects back to the engine
+  // so the owner lock does not wedge on a phantom streaming turn.
+  const upstreamCtrl = new AbortController();
+
   let upstream: Response;
   try {
     upstream = await engineFetch("/engine/chat", {
@@ -60,6 +64,7 @@ export async function POST(req: NextRequest) {
         ...parsed.data,
         session_key: `web:${session.user.id}`,
       }),
+      signal: upstreamCtrl.signal,
     });
   } catch (e) {
     return NextResponse.json(
@@ -80,16 +85,34 @@ export async function POST(req: NextRequest) {
     writer.write(encoder.encode(":ping\n\n")).catch(() => {});
   }, 15000);
 
+  // If the browser disconnects, cancel the upstream fetch and tear down the
+  // writer so the engine side stops streaming and releases the owner lock.
+  const onClientAbort = () => {
+    upstreamCtrl.abort();
+    clearInterval(ping);
+    void writer.abort().catch(() => {});
+  };
+  req.signal.addEventListener("abort", onClientAbort);
+
   (async () => {
     const reader = upstream.body!.getReader();
     try {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        if (value) await writer.write(value);
+        if (value) {
+          try {
+            await writer.write(value);
+          } catch {
+            // Client went away mid-frame — stop pulling from upstream.
+            upstreamCtrl.abort();
+            break;
+          }
+        }
       }
     } finally {
       clearInterval(ping);
+      req.signal.removeEventListener("abort", onClientAbort);
       await writer.close().catch(() => {});
     }
   })();
