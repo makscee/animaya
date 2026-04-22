@@ -1,3 +1,8 @@
+// This module runs in the Next.js Edge runtime (Next middleware). It cannot
+// import `server-only`, because `server-only` throws at module eval. The
+// `.server` suffix is used here only to mark it as non-client-bundled;
+// disable the Next lint rule that assumes Node runtime semantics.
+/* eslint-disable server-only/server-only */
 import { edgeConstantTimeEqual } from "@/lib/ct-compare";
 
 /**

@@ -1,6 +1,10 @@
-import { getToken } from "next-auth/jwt";
+import { encode, getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { edgeConstantTimeEqual } from "@/lib/ct-compare";
+import {
+  verifyVoidnetHeaders,
+  type VoidnetClaims,
+} from "@/lib/voidnet-auth.server";
 
 const PUBLIC_PATHS = new Set<string>(["/login", "/403", "/api/health"]);
 const isApiAuthPath = (p: string) => p.startsWith("/api/auth/");
@@ -53,6 +57,25 @@ function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
   return res;
 }
 
+const VOIDNET_SESSION_MAX_AGE = 60 * 60 * 8; // 8h, mirrors Telegram session
+
+async function mintVoidnetSession(
+  claims: VoidnetClaims,
+  isProd: boolean,
+): Promise<string> {
+  return encode({
+    token: {
+      sub: claims.telegramId,
+      telegramId: claims.telegramId,
+      name: claims.handle,
+      src: "voidnet", // debug-only marker; downstream MUST NOT branch on this
+    },
+    secret: process.env.AUTH_SECRET!,
+    maxAge: VOIDNET_SESSION_MAX_AGE,
+    salt: isProd ? "__Secure-authjs.session-token" : "authjs.session-token",
+  });
+}
+
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const nonce = Buffer.from(
@@ -92,6 +115,45 @@ export default async function middleware(req: NextRequest) {
       .join("; ");
     requestHeaders.set("cookie", cleanedCookie);
     const passRes = NextResponse.next({ request: { headers: requestHeaders } });
+    return applySecurityHeaders(passRes, nonce);
+  }
+
+  // ── VoidNet HMAC header auth (REQ-SPEC-03/04/06) ─────────────────────
+  // Activation: VOIDNET_HMAC_SECRET env + X-Voidnet-Signature header both
+  // present. Unset secret → skip entirely (backward compat with standalone
+  // Telegram deployments).
+  const voidnetSecret = process.env.VOIDNET_HMAC_SECRET;
+  const hasVoidnetSig = req.headers.get("x-voidnet-signature");
+  if (voidnetSecret && hasVoidnetSig) {
+    const isProdVoidnet = process.env.NODE_ENV === "production";
+    const result = await verifyVoidnetHeaders(
+      req.headers,
+      voidnetSecret,
+      process.env.OWNER_TELEGRAM_ID,
+    );
+    if (!result.ok) {
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: result.error, code: result.code },
+          { status: result.status },
+        ),
+        nonce,
+      );
+    }
+    const jwt = await mintVoidnetSession(result.claims, isProdVoidnet);
+    requestHeaders.set("x-user-telegram-id", result.claims.telegramId);
+    const passRes = NextResponse.next({ request: { headers: requestHeaders } });
+    passRes.cookies.set({
+      name: isProdVoidnet
+        ? "__Secure-authjs.session-token"
+        : "authjs.session-token",
+      value: jwt,
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: isProdVoidnet,
+      maxAge: VOIDNET_SESSION_MAX_AGE,
+    });
     return applySecurityHeaders(passRes, nonce);
   }
 
