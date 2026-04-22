@@ -181,6 +181,15 @@ export default async function middleware(req: NextRequest) {
       : "authjs.session-token",
   });
   if (!token) {
+    if (pathname.startsWith("/api/integration/v1/")) {
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: "unauthorized", code: "NO_SESSION" },
+          { status: 401 },
+        ),
+        nonce,
+      );
+    }
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return applySecurityHeaders(NextResponse.redirect(url), nonce);
@@ -194,6 +203,15 @@ export default async function middleware(req: NextRequest) {
         ? token.sub
         : undefined;
   if (!isOwnerTelegramIdEdge(telegramId)) {
+    if (pathname.startsWith("/api/integration/v1/")) {
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: "forbidden", code: "NOT_OWNER" },
+          { status: 403 },
+        ),
+        nonce,
+      );
+    }
     const url = req.nextUrl.clone();
     url.pathname = "/403";
     return applySecurityHeaders(NextResponse.redirect(url), nonce);
