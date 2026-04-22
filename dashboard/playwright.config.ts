@@ -22,6 +22,7 @@ export default defineConfig({
           TELEGRAM_BOT_TOKEN: "0:dummy",
           ANIMAYA_ENGINE_URL: "http://127.0.0.1:8091",
           OWNER_TELEGRAM_ID: "111111",
+          VOIDNET_HMAC_SECRET: "test-voidnet-secret",
         },
       },
 });
