@@ -1,5 +1,6 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { edgeConstantTimeEqual } from "@/lib/ct-compare";
 
 const PUBLIC_PATHS = new Set<string>(["/login", "/403", "/api/health"]);
 const isApiAuthPath = (p: string) => p.startsWith("/api/auth/");
@@ -50,22 +51,6 @@ function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
     "camera=(), microphone=(), geolocation=()",
   );
   return res;
-}
-
-/**
- * Edge-safe constant-time compare. Node's `crypto.timingSafeEqual` is
- * unavailable here; we substitute a length-guarded XOR loop.
- *
- * T-13-16 (threat model): accepting the Edge XOR approach is tracked as an
- * explicit risk. DASHBOARD_TOKEN is a shared secret behind Caddy TLS; the
- * XOR loop is length-guarded to avoid early-exit leakage beyond the universal
- * wrong-length signal.
- */
-function edgeConstantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 export default async function middleware(req: NextRequest) {
