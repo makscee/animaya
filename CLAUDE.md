@@ -1,5 +1,16 @@
 # CLAUDE.md
 
+## Cross-references (hub knowledge)
+
+- **Project index:** `hub/knowledge/projects/animaya/README.md`
+- **Voidnet auth contract (locked 2026-04-23):** `hub/knowledge/integrations/animaya-voidnet.md`
+- **Voidnet auth quick-ref:** `hub/knowledge/projects/animaya/VOIDNET_INTEGRATION.md`
+- **Module system:** `hub/knowledge/projects/animaya/MODULE_AUTHORING.md`
+- **Memory system:** `hub/knowledge/projects/animaya/MEMORY_SYSTEM.md`
+- **E2E testing (Playwright MCP, LXC loop):** `hub/knowledge/integrations/animaya-e2e-testing.md`
+
+> **GSD is frozen** in this repo (`.planning/` retained for history only). Active work tracked in `hub/tasks/` (`ANI-*`, `ANI_VDN-*`, `VDN-*` prefixes). Do not invoke `/gsd-*` commands for new work.
+
 ## Project Overview
 
 Animaya is a personal AI assistant platform — part of Voidnet. Each user gets an isolated Claude Code-powered assistant connected to Telegram, running in a sandboxed Docker container on mcow.
