@@ -12,6 +12,7 @@
   "dependencies": {
     "@auth/core": "^0.34.3",
     "@hookform/resolvers": "^5.2.2",
+    "@hub/ui-kit": "*",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
