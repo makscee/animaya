@@ -66,7 +66,7 @@ export function ToolUseEvent(props: ToolUseEventProps) {
   if (props.type === "text" && typeof props.content === "string") {
     return (
       <div
-        className="prose prose-invert max-w-none text-sm leading-relaxed"
+        className="prose prose-invert min-w-0 max-w-none break-words text-sm leading-relaxed"
         data-testid="chat-text"
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -82,15 +82,15 @@ export function ToolUseEvent(props: ToolUseEventProps) {
     return (
       <Card
         data-testid="chat-tool-use"
-        className="border-primary/30 bg-muted/30"
+        className="min-w-0 max-w-full overflow-hidden border-primary/30 bg-muted/30"
       >
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
           <Hammer className="size-4 text-muted-foreground" />
           <Icon className="size-4 text-primary" />
           <CardTitle className="font-mono text-xs">{tool}</CardTitle>
         </CardHeader>
-        <CardContent>
-          <pre className="overflow-x-auto rounded bg-background/50 p-2 text-xs">
+        <CardContent className="min-w-0">
+          <pre className="max-h-48 min-w-0 overflow-auto whitespace-pre-wrap break-all rounded bg-background/50 p-2 text-xs">
             {JSON.stringify(props.input ?? {}, null, 2)}
           </pre>
         </CardContent>
@@ -108,7 +108,7 @@ export function ToolUseEvent(props: ToolUseEventProps) {
     return (
       <Card
         data-testid="chat-tool-result"
-        className="border-muted-foreground/20"
+        className="min-w-0 max-w-full overflow-hidden border-muted-foreground/20"
       >
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
           <Icon className="size-4 text-muted-foreground" />
@@ -116,8 +116,8 @@ export function ToolUseEvent(props: ToolUseEventProps) {
             {tool} result
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <pre className="max-h-48 overflow-auto rounded bg-background/50 p-2 text-xs">
+        <CardContent className="min-w-0">
+          <pre className="max-h-48 min-w-0 overflow-auto whitespace-pre-wrap break-all rounded bg-background/50 p-2 text-xs">
             {out}
           </pre>
         </CardContent>

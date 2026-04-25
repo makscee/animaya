@@ -142,17 +142,56 @@ export default async function middleware(req: NextRequest) {
     }
     const jwt = await mintVoidnetSession(result.claims, isProdVoidnet);
     requestHeaders.set("x-user-telegram-id", result.claims.telegramId);
+
+    // Upstream proxies (voidnet-api HOP_BY_HOP strips all cookies per T-12-06),
+    // so browser-stored cookies never reach the LXC. Inject the freshly-minted
+    // session JWT into this request's Cookie header so downstream `auth()`
+    // sees a valid session in the SAME request. Also mirror the browser's
+    // `x-csrf-token` header into an `an-csrf` cookie so `verifyCsrf` passes
+    // its double-submit check (cookie value equals header value).
+    const sessionCookieName = isProdVoidnet
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
+    const csrfHeader = req.headers.get("x-csrf-token");
+    const existingCsrfCookie = req.cookies.get("an-csrf")?.value;
+    // Deterministic CSRF token: browser-echoed header > existing cookie > new random.
+    let csrfValue = csrfHeader || existingCsrfCookie;
+    if (!csrfValue) {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      csrfValue = Array.from(bytes, (b) =>
+        b.toString(16).padStart(2, "0"),
+      ).join("");
+    }
+    const injectedEntries = [
+      `${sessionCookieName}=${jwt}`,
+      `an-csrf=${csrfValue}`,
+    ];
+    const existingCookie = requestHeaders.get("cookie") ?? "";
+    const injected = injectedEntries.join("; ");
+    requestHeaders.set(
+      "cookie",
+      existingCookie ? `${existingCookie}; ${injected}` : injected,
+    );
+
     const passRes = NextResponse.next({ request: { headers: requestHeaders } });
     passRes.cookies.set({
-      name: isProdVoidnet
-        ? "__Secure-authjs.session-token"
-        : "authjs.session-token",
+      name: sessionCookieName,
       value: jwt,
       httpOnly: true,
       sameSite: "lax",
       path: "/",
       secure: isProdVoidnet,
       maxAge: VOIDNET_SESSION_MAX_AGE,
+    });
+    passRes.cookies.set({
+      name: "an-csrf",
+      value: csrfValue,
+      httpOnly: false,
+      sameSite: "strict",
+      path: "/",
+      secure: isProdVoidnet,
+      maxAge: 28800,
     });
     return applySecurityHeaders(passRes, nonce);
   }

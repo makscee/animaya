@@ -105,6 +105,56 @@ async def list_modules() -> dict[str, Any]:
     return {"modules": items}
 
 
+@router.get("/{name}")
+async def get_module(name: str) -> dict[str, Any]:
+    """Return a single module DTO with config, schema, and prompt doc.
+
+    Shape: {name, version, description, readme, config_schema, installed,
+    has_config, config}. Consumed by /modules/[name] detail page for
+    description + schema-driven form hints.
+    Returns 404 when the module name is unknown to the registry.
+    """
+    import json as _json
+    hub = _hub_dir()
+    card = describe(hub, name)
+    if card is None:
+        raise HTTPException(status_code=404, detail=f"module {name!r} not found")
+    entry = get_entry(hub, name) or {}
+    config = entry.get("config") or {}
+
+    module_dir = module_dir_for(name)
+    config_schema: dict[str, Any] | None = None
+    readme = ""
+    manifest_path = module_dir / "manifest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+            schema = manifest.get("config_schema")
+            if isinstance(schema, dict):
+                config_schema = schema
+        except (OSError, ValueError):
+            pass
+    for candidate in ("README.md", "prompt.md"):
+        p = module_dir / candidate
+        if p.is_file():
+            try:
+                readme = p.read_text(encoding="utf-8")
+                break
+            except OSError:
+                continue
+
+    return {
+        "name": card.name,
+        "version": card.version,
+        "description": card.description,
+        "readme": readme,
+        "config_schema": config_schema,
+        "installed": card.installed,
+        "has_config": card.has_config,
+        "config": _scrub_mapping(dict(config)) if isinstance(config, dict) else {},
+    }
+
+
 @router.post("/{name}/install")
 async def install_module(name: str, request: Request) -> dict[str, Any]:
     hub = _hub_dir()

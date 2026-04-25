@@ -24,6 +24,11 @@ type ModulesResponse = { modules: Module[] };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+function cleanDescription(raw?: string): string {
+  if (!raw) return "";
+  return raw.split("\n")[0].trim().replace(/^#+\s*/, "");
+}
+
 function readCsrf(): string {
   if (typeof document === "undefined") return "";
   const m = document.cookie.match(/(?:^|;\s*)an-csrf=([^;]+)/);
@@ -76,7 +81,7 @@ export function ModulesList() {
               </span>
             </CardTitle>
             {mod.description ? (
-              <CardDescription>{mod.description}</CardDescription>
+              <CardDescription>{cleanDescription(mod.description)}</CardDescription>
             ) : null}
           </CardHeader>
           <CardContent className="flex gap-2">

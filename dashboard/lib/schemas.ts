@@ -46,6 +46,12 @@ export const BridgePolicyPayload = z.object({
   policy: z.enum(["owner_only", "allowlist", "open"]),
 });
 
+/** Telegram bot token: digits:rest, min length ~30. Pass-through to getMe. */
+export const BridgeTokenPayload = z.object({
+  token: z.string().min(20).max(200),
+});
+export type BridgeTokenPayloadType = z.infer<typeof BridgeTokenPayload>;
+
 // ── Hub filesystem queries ─────────────────────────────────────────────────
 
 export const HubTreeQuery = z.object({

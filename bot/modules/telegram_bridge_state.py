@@ -61,6 +61,8 @@ async def validate_bot_token(token: str) -> tuple[bool, str | None, str | None]:
     """Validate a Telegram bot token via the getMe API.
 
     Calls ``https://api.telegram.org/bot{token}/getMe`` with a 10-second timeout.
+    Honors ``TELEGRAM_PROXY`` env (same pattern as ``bot/bridge/telegram.py``) so
+    the check works from regions where api.telegram.org is blocked.
     Never logs the token value.
 
     Args:
@@ -70,11 +72,14 @@ async def validate_bot_token(token: str) -> tuple[bool, str | None, str | None]:
         ``(True, username, None)`` on success.
         ``(False, None, error_message)`` on failure or network error.
     """
+    import os
+
     import httpx  # deferred import to avoid import-time side effects
 
+    proxy = os.environ.get("TELEGRAM_PROXY") or None
     url = f"https://api.telegram.org/bot{token}/getMe"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, proxy=proxy) as client:
             response = await client.get(url)
             data = response.json()
     except (httpx.TimeoutException, httpx.ConnectError, httpx.RequestError):
