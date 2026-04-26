@@ -1,3 +1,4 @@
 {
-  "start.greeting": "Hello, {name}! I'm Animaya, your personal AI assistant. Use /help to see what I can do."
+  "start.greeting": "Hello, {name}! I'm Animaya, your personal AI assistant. Use /help to see what I can do.",
+  "notify.suspended": "Service {slug} suspended: {reason}. Top up to reactivate."
 }
