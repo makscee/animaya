@@ -24,32 +24,42 @@ mcow server (Voidnet infra)
 └── Bot containers (sandboxed, per-user)
     ├── Telegram bridge → Claude Code SDK → streaming responses
     ├── 3-tier memory (core summary / working files / archive search)
-    ├── Spaces module (knowledge workspaces)
-    ├── FastAPI dashboard (port 8090)
+    ├── Modules system (`bot/modules/`, runtime in `bot/modules_runtime/`)
+    ├── Engine HTTP bridge for the Next.js dashboard (port 8091)
     └── Git auto-versioning of /data
+└── Next.js dashboard container (port 3000) — see `dashboard/` (App Router, separate from `bot/`)
 ```
 
 ## Key Files
 
 ```
 bot/
-├── main.py              — Entry point: Telegram bot + dashboard
+├── main.py              — Entry point: Telegram bot + engine bridge
 ├── claude_query.py      — Claude Code SDK options builder (single source of truth)
+├── events.py            — Internal event bus
 ├── bridge/
 │   ├── telegram.py      — Telegram message handler + streaming
 │   └── formatting.py    — Markdown → Telegram HTML
+├── engine/              — HTTP bridge consumed by Next.js dashboard (port 8091)
 ├── memory/
 │   ├── core.py          — Tier 1: core summary for system prompt
-│   ├── spaces.py        — Spaces module (knowledge workspaces)
+│   ├── consolidation.py — Post-conversation memory consolidation
 │   └── search.py        — Semantic search over memory files
-├── features/
-│   ├── audio.py         — Voice transcription (Groq Whisper)
-│   ├── image_gen.py     — Image generation (Gemini)
-│   ├── git_versioning.py — Auto-commit /data changes
-│   └── self_dev.py      — bot.Dockerfile management (no runtime pip)
-└── dashboard/
-    ├── app.py           — FastAPI web UI
-    └── auth.py          — Telegram Login Widget auth
+├── modules/             — Installable feature modules (config + handlers)
+├── modules_runtime/     — Runtime loader + lifecycle for modules
+├── templates/           — Jinja templates (CLAUDE.md assembly, module skeletons)
+└── features/
+    ├── audio.py         — Voice transcription (Groq Whisper)
+    ├── image_gen.py     — Image generation (Gemini)
+    ├── git_versioning.py — Auto-commit /data changes
+    └── self_dev.py      — bot.Dockerfile management (no runtime pip)
+
+dashboard/                — Next.js 15 App Router (top-level, not under bot/)
+├── app/                 — App Router pages + api routes
+│   └── api/             — auth, bridge, chat, hub, integration, modules
+├── components/          — React components
+├── lib/                  — Client helpers + types
+└── middleware.ts        — Edge middleware (next-auth + voidnet HMAC branch)
 
 docker/
 ├── Dockerfile.bot       — Bot image (Python 3.12 + Node.js 22 + Claude Code CLI)
@@ -365,16 +375,11 @@ No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skill
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
+## Workflow
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+GSD is **frozen** in this repo. Active work is routed through hub's unified workflow:
+`/work <ID>`, `/task-new <PFX> <title>`, `/done <ID>`. See `hub/CLAUDE.md` for the full
+contract. Old `/gsd-*` slash commands are retired and must not be invoked for new work.
 <!-- GSD:workflow-end -->
 
 <!-- GSD:profile-start -->
