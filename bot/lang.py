@@ -49,6 +49,7 @@ __all__ = [
     "BOT_HANDLE",
     "HMAC_TS_SKEW_SECS",
     "TTL_SECS",
+    "bust_cache",
     "canonical_string",
     "from_bcp47",
     "get_user_lang",
@@ -164,6 +165,16 @@ def _cache_get(user_id: int) -> Optional[str]:
 
 def _cache_set(user_id: int, lang: str) -> None:
     _CACHE[user_id] = (lang, time.time())
+
+
+def bust_cache(user_id: int) -> bool:
+    """Drop the cached language entry for ``user_id``.
+
+    Called by the inbound ``POST /internal/lang-bust`` route (T11) after the
+    voidnet portal records a settings change. Returns ``True`` if an entry
+    was present, ``False`` otherwise (idempotent — safe to call repeatedly).
+    """
+    return _CACHE.pop(user_id, None) is not None
 
 
 # ── HMAC GET ─────────────────────────────────────────────────────────
