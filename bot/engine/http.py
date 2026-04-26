@@ -17,7 +17,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from bot.engine import bridge_rpc, modules_rpc
+from bot.engine import bridge_rpc, lang_bust, modules_rpc, notify
 from bot.engine.chat_stream import stream_chat
 
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
@@ -62,6 +62,8 @@ async def engine_chat(req: Request) -> StreamingResponse:
 
 app.include_router(modules_rpc.router, prefix="/engine/modules")
 app.include_router(bridge_rpc.router, prefix="/engine/bridge")
+app.include_router(lang_bust.router, prefix="/internal")
+app.include_router(notify.router, prefix="/internal")
 
 
 def get_port() -> int:

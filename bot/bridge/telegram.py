@@ -28,6 +28,8 @@ from telegram.ext import (
 
 from bot.bridge.formatting import TG_MAX_LEN, md_to_html
 from bot.events import emit as _emit_event
+from bot.i18n import t
+from bot.lang import get_user_lang
 from bot.memory.consolidation import maybe_trigger_consolidation
 
 logger = logging.getLogger(__name__)
@@ -665,15 +667,19 @@ async def _claim_proactive_greet(
 async def _handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message:
         return
-    await update.message.reply_text(
-        "Hey! I'm your personal AI assistant powered by Claude.\n\n"
-        "Just send me a message and I'll help you out. I can:\n"
-        "- Answer questions and have conversations\n"
-        "- Read and write files\n"
-        "- Run commands and search the web\n"
-        "- Help with coding and analysis\n\n"
-        "Send me a message to get started!",
-    )
+    tg_user = update.effective_user
+    # Resolve UI language via voidnet (HMAC GET) with TG locale fallback. Sync
+    # call (lang.get_user_lang is sync httpx); the substrate is small + cached
+    # so the brief block is acceptable in this command handler.
+    if tg_user is not None:
+        lang = get_user_lang(
+            user_id=tg_user.id, tg_language_code=tg_user.language_code
+        )
+        name = tg_user.first_name or tg_user.username or ""
+    else:
+        lang = "en"
+        name = ""
+    await update.message.reply_text(t("start.greeting", lang, name=name))
 
 
 # ── Core message handler ───────────────────────────────────────────
