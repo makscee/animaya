@@ -113,6 +113,31 @@ Optional:
 - Spaces use `@` prefix, kebab-case: `@project-name`
 - Skills use `~` prefix: `~deploy-process.md`
 
+## i18n substrate (ANI_VDN-2, 2026-04-26)
+
+Cross-project per-user language plumbing. Substrate only — broader localization lands in ANI_VDN-3.
+
+**Dictionaries + renderer:**
+- `bot/i18n/{en,ru}.json` — flat key/value dicts (parity contract: `/Users/admin/hub/knowledge/integrations/i18n-keys.md`)
+- `bot/i18n/__init__.py::t(key, lang, **vars)` — lookup + `{var}` interpolation; falls back to `en` then to the raw key on miss
+- `bot/i18n/__init__.py::ru_pluralize(n, one, few, many)` — Slavic plural rule
+
+**Per-user language resolution:**
+- `bot/lang.py::get_user_lang(user_id, tg_language_code=None)` — HMAC GET to voidnet `/api/users/:id`, reads `language`, caches 60s in-process. Falls back to BCP-47 from Telegram `language_code` (`"ru*"` → `"ru"`, else `"en"`) on lookup miss. Flag-off short-circuits to `"en"` with no roundtrip.
+- HMAC scheme: same canonical string as the dashboard proxy contract — `{user_id}|{handle}|{telegram_id_or_empty}|{timestamp}` — secret in `VOIDNET_HMAC_SECRET`. ±60s skew window.
+
+**Feature flag** `I18N_SUBSTRATE_V1`:
+- Helper: `bot/config.py::i18n_enabled()` — reads env var, default ON, accepts `0`/`false`/`FALSE` to disable.
+- Off-state: `get_user_lang` → `"en"` always (no GET); `POST /internal/lang-bust` and `/internal/notify` return 404.
+
+**Engine routes (FastAPI on `127.0.0.1:${ANIMAYA_ENGINE_PORT:-8091}`):**
+- `bot/engine/lang_bust.py` — `POST /internal/lang-bust`. Verifies HMAC + ±60s skew, drops `get_user_lang` cache entry for `user_id`. 204 / 400 / 401 / 404 (flag off).
+- `bot/engine/notify.py` — `POST /internal/notify` (T14). Consumes `recipient_lang` from body inline (no cache touch); falls back to `get_user_lang(user_id)` if `recipient_lang` absent (older payloads in flight). Renders via `t(key, lang, **vars)`. Returns `{"lang": <resolved>, "message": <rendered>}`.
+
+**D4 scope (substrate):** OTP email (en/ru), `/start` greeting, one landing CTA, `/settings/language` UI strings. Bot replies, modules, dashboard strings stay English-only until ANI_VDN-3.
+
+**Cross-project contract:** `/Users/admin/hub/knowledge/integrations/animaya-voidnet.md` (Language fan-out section).
+
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
